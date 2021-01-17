@@ -246,65 +246,22 @@ plist_fragment(
     )
 )
 
-official_apple_pay_merchants = [
-    "merchant.ph.telegra.Telegraph",
-    "merchant.yandex.ph.telegra.Telegraph",
-    "merchant.sberbank.ph.telegra.Telegraph",
-    "merchant.sberbank.test.ph.telegra.Telegraph",
-    "merchant.privatbank.test.telergramios",
-    "merchant.privatbank.prod.telergram",
-]
-
-official_bundle_ids = [
-    "ph.telegra.Telegraph",
-    "org.telegram.Telegram-iOS",
-]
-
-apple_pay_merchants = official_apple_pay_merchants if telegram_bundle_id == "ph.telegra.Telegraph" else []
-
-apple_pay_merchants_fragment = "" if apple_pay_merchants == [] else """
-<key>com.apple.developer.in-app-payments</key>
-<array>
-""" + "\n".join([
-"    <string>{}</string>".format(merchant_id) for merchant_id in apple_pay_merchants
-]) + "\n" + """
-</array>
-"""
-
-official_unrestricted_voip_fragment = """
-<key>com.apple.developer.pushkit.unrestricted-voip</key>
-<true/>
-"""
-unrestricted_voip_fragment = official_unrestricted_voip_fragment if telegram_bundle_id in official_bundle_ids else ""
-
 telegram_entitlements_template = """
-    <key>com.apple.developer.icloud-services</key>
-    <array>
-        <string>CloudKit</string>
-        <string>CloudDocuments</string>
-    </array>
-    <key>com.apple.developer.icloud-container-identifiers</key>
-    <array>
-        <string>iCloud.{telegram_bundle_id}</string>
-    </array>
-    <key>aps-environment</key>
-    <string>{telegram_aps_environment}</string>
-    <key>com.apple.developer.associated-domains</key>
-    <array>
-        <string>applinks:telegram.me</string>
-        <string>applinks:t.me</string>
-    </array>
-    <key>com.apple.developer.siri</key>
-    <true/>
     <key>com.apple.security.application-groups</key>
     <array>
         <string>group.{telegram_bundle_id}</string>
     </array>
     <key>application-identifier</key>
-    <string>{telegram_team_id}.{telegram_bundle_id}</string>
-    <key>com.apple.developer.icloud-container-environment</key>
-    <string>{telegram_icloud_environment}</string>
-""" + apple_pay_merchants_fragment + unrestricted_voip_fragment
+	<string>{telegram_team_id}.{telegram_bundle_id}</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>{telegram_team_id}</string>
+	<key>get-task-allow</key>
+	<true/>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>{telegram_team_id}.*</string>
+	</array>
+"""
 
 plist_fragment(
     name = "TelegramEntitlements",
