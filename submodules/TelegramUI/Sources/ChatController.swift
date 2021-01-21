@@ -4209,7 +4209,53 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                             stationaryItemRange = (maxInsertedItem + 1, Int.max)
                         }
                         
-                        mappedTransition = (ChatHistoryListViewTransition(historyView: transition.historyView, deleteItems: deleteItems, insertItems: insertItems, updateItems: transition.updateItems, options: options, scrollToItem: scrollToItem, stationaryItemRange: stationaryItemRange, initialData: transition.initialData, keyboardButtonsMessage: transition.keyboardButtonsMessage, cachedData: transition.cachedData, cachedDataMessages: transition.cachedDataMessages, readStateData: transition.readStateData, scrolledToIndex: transition.scrolledToIndex, scrolledToSomeIndex: transition.scrolledToSomeIndex, peerType: transition.peerType, networkType: transition.networkType, animateIn: false, reason: transition.reason, flashIndicators: transition.flashIndicators), updateSizeAndInsets)
+                        var animationCallback: ChatHistoryListViewTransition.AnimationCallback? = nil
+                        if case .InteractiveChanges = transition.reason, !transition.insertItems.isEmpty {
+                            options.remove(.AnimateAlpha)
+                            options.remove(.RequestItemInsertionAnimations)
+
+                            animationCallback = { [weak wself = strongSelf] (node: ListViewItemNode, completion: (() -> Void)?) in
+                                guard let sself = wself else { return }
+                                guard let node = node as? ChatMessageBubbleItemNode else { return }
+                                guard let inputPanelNode = sself.chatDisplayNode.inputPanelNode as? ChatTextInputPanelNode else { return }
+                                let chatDisplayNode = sself.chatDisplayNode
+                                let textInputNode = inputPanelNode.textInputContainer
+                                let textInputNodeFrameConverted = textInputNode.view.convert(textInputNode.view.bounds, to: chatDisplayNode.view)
+                                let animatingNode = node.mainContainerNode
+                                guard let animatingNodeSupernode = animatingNode.supernode else { return }
+                                let animatingNodeIndex = animatingNodeSupernode.subnodes!.firstIndex(of: animatingNode)!
+                                let animatingNodeFrame = animatingNode.frame
+                                // ASDisplayNode.convert() is giving wrong value, using UIView.convert() instead
+                                let animatingNodeFrameConverted = animatingNode.view.convert(animatingNode.view.bounds, to: chatDisplayNode.view)
+                                let animatingFrameOffsetX = node.backgroundNode.view.convert(node.backgroundNode.view.bounds, to: animatingNode.view).origin.x
+
+                                node.isLayoutLocked = true
+                                animatingNode.removeFromSupernode()
+                                chatDisplayNode.addSubnode(animatingNode)
+                                animatingNode.frame = animatingNodeFrameConverted
+
+                                let transition = ContainedViewLayoutTransition.animated(duration: 0.5, curve: .easeInOut)
+                                transition.animateFrame(
+                                    node: animatingNode,
+                                    from: CGRect(origin: textInputNodeFrameConverted.origin, size: animatingNode.frame.size).offsetBy(dx: -animatingFrameOffsetX, dy: CGFloat.zero),
+                                    to: animatingNodeFrameConverted,
+                                    completion: { [weak wNode = node,
+                                                   weak wAnimatingNode = animatingNode,
+                                                   weak wAnimatingNodeSupernode = animatingNodeSupernode] (_: Bool) in
+                                        guard let sNode = wNode, let sAnimatingNode = wAnimatingNode, let sAnimatingNodeSupernode = wAnimatingNodeSupernode else { return }
+                                        sAnimatingNode.removeFromSupernode()
+                                        sAnimatingNodeSupernode.insertSubnode(sAnimatingNode, at: animatingNodeIndex)
+                                        sAnimatingNode.frame = animatingNodeFrame
+                                        sNode.isLayoutLocked = false
+                                        if let completion = completion {
+                                            completion()
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        mappedTransition = (ChatHistoryListViewTransition(historyView: transition.historyView, deleteItems: deleteItems, insertItems: insertItems, updateItems: transition.updateItems, options: options, scrollToItem: scrollToItem, stationaryItemRange: stationaryItemRange, initialData: transition.initialData, keyboardButtonsMessage: transition.keyboardButtonsMessage, cachedData: transition.cachedData, cachedDataMessages: transition.cachedDataMessages, readStateData: transition.readStateData, scrolledToIndex: transition.scrolledToIndex, scrolledToSomeIndex: transition.scrolledToSomeIndex, peerType: transition.peerType, networkType: transition.networkType, animateIn: false, reason: transition.reason, flashIndicators: transition.flashIndicators, animationCallback: animationCallback), updateSizeAndInsets)
                     })
                     
                     if let mappedTransition = mappedTransition {

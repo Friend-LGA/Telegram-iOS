@@ -356,10 +356,12 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
         }
     }
      
+    public var isLayoutLocked: Bool = false
+
     private let mainContextSourceNode: ContextExtractedContentContainingNode
-    private let mainContainerNode: ContextControllerSourceNode
+    public let mainContainerNode: ContextControllerSourceNode
     private let backgroundWallpaperNode: ChatMessageBubbleBackdrop
-    private let backgroundNode: ChatMessageBackground
+    public let backgroundNode: ChatMessageBackground
     private let shadowNode: ChatMessageShadowNode
     private var transitionClippingNode: ASDisplayNode?
     
@@ -538,7 +540,7 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     override func animateInsertion(_ currentTimestamp: Double, duration: Double, short: Bool) {
         super.animateInsertion(currentTimestamp, duration: duration, short: short)
         
@@ -585,7 +587,7 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
         self.layer.animateScale(from: 1.0, to: 0.1, duration: 0.15, removeOnCompletion: false)
         self.layer.animatePosition(from: CGPoint(), to: CGPoint(x: self.bounds.width / 2.0 - self.backgroundNode.frame.midX, y: self.backgroundNode.frame.midY), duration: 0.15, timingFunction: CAMediaTimingFunctionName.easeInEaseOut.rawValue, removeOnCompletion: false, additive: true)
     }
-    
+
     override func animateAdded(_ currentTimestamp: Double, duration: Double) {
         super.animateAdded(currentTimestamp, duration: duration)
         
@@ -2139,6 +2141,12 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
         guard let strongSelf = selfReference.value else {
             return
         }
+
+        guard !strongSelf.isLayoutLocked else {
+            // Store and call it when layout is unlocked
+            return
+        }
+
         let previousContextFrame = strongSelf.mainContainerNode.frame
         strongSelf.mainContainerNode.frame = CGRect(origin: CGPoint(), size: layout.contentSize)
         strongSelf.mainContextSourceNode.frame = CGRect(origin: CGPoint(), size: layout.contentSize)

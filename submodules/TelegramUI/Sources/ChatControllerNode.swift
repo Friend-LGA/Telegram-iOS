@@ -321,7 +321,7 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
     private let titleAccessoryPanelContainer: ChatControllerTitlePanelNodeContainer
     private var titleAccessoryPanelNode: ChatTitleAccessoryPanelNode?
     
-    private var inputPanelNode: ChatInputPanelNode?
+    public var inputPanelNode: ChatInputPanelNode?
     private weak var currentDismissedInputPanelNode: ASDisplayNode?
     private var secondaryInputPanelNode: ChatInputPanelNode?
     private var accessoryPanelNode: AccessoryPanelNode?
