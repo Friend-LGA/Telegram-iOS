@@ -4213,7 +4213,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                         if case .InteractiveChanges = transition.reason, !transition.insertItems.isEmpty {
                             options.remove(.AnimateAlpha)
                             options.remove(.RequestItemInsertionAnimations)
-                            animationCallback = messageSentAnimationCallback(chatControllerNode: strongSelf.chatDisplayNode)
+                            animationCallback = ChatControllerAnimations.getAnimationCallback(chatControllerNode: strongSelf.chatDisplayNode)
                         }
 
                         mappedTransition = (ChatHistoryListViewTransition(historyView: transition.historyView, deleteItems: deleteItems, insertItems: insertItems, updateItems: transition.updateItems, options: options, scrollToItem: scrollToItem, stationaryItemRange: stationaryItemRange, initialData: transition.initialData, keyboardButtonsMessage: transition.keyboardButtonsMessage, cachedData: transition.cachedData, cachedDataMessages: transition.cachedDataMessages, readStateData: transition.readStateData, scrolledToIndex: transition.scrolledToIndex, scrolledToSomeIndex: transition.scrolledToSomeIndex, peerType: transition.peerType, networkType: transition.networkType, animateIn: false, reason: transition.reason, flashIndicators: transition.flashIndicators, animationCallback: animationCallback), updateSizeAndInsets)
