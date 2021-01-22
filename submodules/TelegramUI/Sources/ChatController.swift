@@ -4222,6 +4222,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                                 let chatDisplayNode = sself.chatDisplayNode
 
                                 let textInputNode = inputPanelNode.textInputContainer
+                                let textInputNodeBounds = textInputNode.bounds
                                 let textInputNodeFrameConverted = textInputNode.view.convert(textInputNode.view.bounds, to: chatDisplayNode.view)
 
                                 let animatingNode = node.mainContainerNode
@@ -4246,30 +4247,83 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                                 chatDisplayNode.addSubnode(animatingNode)
 
                                 animatingNode.frame = textInputNodeFrameConverted
-                                animatingBackgroundNode.frame = CGRect(origin: CGPoint.zero, size: textInputNodeFrameConverted.size)
-                                animatingContentNode.frame = CGRect(origin: CGPoint.zero, size: textInputNodeFrameConverted.size)
-                                animatingStatusNode.layer.opacity = 0.0
+                                animatingBackgroundNode.frame = animatingNode.bounds
+                                animatingContentNode.frame = animatingNode.bounds
+                                animatingStatusNode.alpha = CGFloat.zero
+
+                                func toRadians(_ degrees: CGFloat) -> CGFloat {
+                                    degrees * .pi / 180.0
+                                }
+
+                                let path = UIBezierPath()
+                                do { // draw path
+                                    let layerWidth = textInputNodeFrameConverted.width
+                                    let layerHeight = textInputNodeFrameConverted.height
+                                    let radius: CGFloat = min(inputPanelNode.minimalInputHeight() / 2.0, layerHeight / 2.0)
+
+                                    // Points in corners to draw arcs around
+                                    let topLeftX: CGFloat = radius
+                                    let topLeftY: CGFloat = radius
+                                    let topRightX: CGFloat = layerWidth - radius
+                                    let topRightY: CGFloat = radius
+                                    let bottomRightX: CGFloat = layerWidth - radius
+                                    let bottomRightY: CGFloat = layerHeight - radius
+                                    let bottomLeftX: CGFloat = radius
+                                    let bottomLeftY: CGFloat = layerHeight - radius
+
+                                    path.move(to: CGPoint(x: 0.0, y: topLeftY))
+                                    path.addArc(withCenter: CGPoint(x: topLeftX, y: topLeftY),
+                                                radius: radius,
+                                                startAngle: toRadians(180.0),
+                                                endAngle: toRadians(270.0),
+                                                clockwise: true)
+                                    path.addLine(to: CGPoint(x: topRightX, y: 0.0))
+                                    path.addArc(withCenter: CGPoint(x: topRightX, y: topRightY),
+                                                radius: radius,
+                                                startAngle: toRadians(270.0),
+                                                endAngle: toRadians(0.0),
+                                                clockwise: true)
+                                    path.addLine(to: CGPoint(x: layerWidth, y: bottomRightY))
+                                    path.addArc(withCenter: CGPoint(x: bottomRightX, y: bottomRightY),
+                                                radius: radius,
+                                                startAngle: toRadians(0.0),
+                                                endAngle: toRadians(90.0),
+                                                clockwise: true)
+                                    path.addLine(to: CGPoint(x: bottomLeftX, y: layerHeight))
+                                    path.addArc(withCenter: CGPoint(x: bottomLeftX, y: bottomLeftY),
+                                                radius: radius,
+                                                startAngle: toRadians(90.0),
+                                                endAngle: toRadians(180.0),
+                                                clockwise: true)
+                                    path.addLine(to: CGPoint(x: 0.0, y: topLeftY))
+                                    path.close()
+                                }
 
                                 let backgroundShapeLayer = CAShapeLayer()
-                                backgroundShapeLayer.path = UIBezierPath(roundedRect: animatingNode.bounds, cornerRadius: inputPanelNode.minimalInputHeight()).cgPath
+                                backgroundShapeLayer.path = path.cgPath
                                 backgroundShapeLayer.strokeColor = inputPanelNode.inputStrokeColor().cgColor
                                 backgroundShapeLayer.fillColor = inputPanelNode.inputBackgroundColor().cgColor
                                 animatingBackgroundNode.layer.addSublayer(backgroundShapeLayer)
 
-                                let duration = 0.5
+                                let duration = 5.0
 
                                 CATransaction.begin()
                                 CATransaction.setCompletionBlock { [weak wAnimatingNode = animatingNode,
                                                                     weak wAnimatingBackgroundNode = animatingBackgroundNode,
+                                                                    weak wAnimatingContentNode = animatingContentNode,
                                                                     weak wAnimatingNodeSupernode = animatingNodeSupernode] in
                                     guard let sAnimatingNode = wAnimatingNode,
                                           let sAnimatingBackgroundNode = wAnimatingBackgroundNode,
+                                          let sAnimatingContentNode = wAnimatingContentNode,
                                           let sAnimatingNodeSupernode = wAnimatingNodeSupernode else {
                                         return
                                     }
                                     backgroundShapeLayer.removeFromSuperlayer()
                                     sAnimatingNode.removeFromSupernode()
                                     sAnimatingNodeSupernode.insertSubnode(sAnimatingNode, at: animatingNodeIndex)
+                                    sAnimatingNode.frame = animatingNodeFrame
+                                    sAnimatingBackgroundNode.frame = animatingBackgroundNodeFrame
+                                    sAnimatingContentNode.frame = animatingContentNodeFrame
                                     sAnimatingBackgroundNode.showImages()
                                     if let completion = completion {
                                         completion()
@@ -4308,7 +4362,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                                         resizeAnimation(animatingNode.layer, animatingNodeFrameConverted.size, duration),
                                         repositionAnimation(animatingNode.layer, calculatePosition(animatingNodeFrameConverted), duration)
                                     ]
-                                    animatingNode.frame = animatingNodeFrame // final
+                                    animatingNode.frame = animatingNodeFrameConverted // final
                                     addAnimations(animatingNode.layer, animations)
                                 }
 
@@ -4319,13 +4373,106 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                                     ]
                                     animatingBackgroundNode.frame = animatingBackgroundNodeFrame // final
                                     addAnimations(animatingBackgroundNode.layer, animations)
+                                }
 
-                                    let redrawAnimation = CABasicAnimation(keyPath: "path")
-                                    redrawAnimation.toValue = UIBezierPath(roundedRect: animatingBackgroundNodeBounds, cornerRadius: 8.0).cgPath
-                                    redrawAnimation.duration = duration
-                                    redrawAnimation.fillMode = CAMediaTimingFillMode.forwards
-                                    redrawAnimation.isRemovedOnCompletion = false
-                                    backgroundShapeLayer.add(redrawAnimation, forKey: "animation")
+                                do { // backgroundShapeLayer
+                                    let neighbors = animatingBackgroundNode.neighborsDirection
+                                    let minCornerRadius = animatingBackgroundNode.chatMessageBackgroundMinCornerRadius
+                                    let maxCornerRadius = animatingBackgroundNode.chatMessageBackgroundMaxCornerRadius
+
+                                    let path = UIBezierPath()
+                                    do { // draw path
+                                        let topLeftRadius: CGFloat
+                                        let topRightRadius: CGFloat
+                                        let bottomLeftRadius: CGFloat
+                                        let bottomRightRadius: CGFloat
+
+                                        switch neighbors {
+                                        case .bottom:
+                                            topLeftRadius = maxCornerRadius
+                                            topRightRadius = minCornerRadius
+                                            bottomLeftRadius = maxCornerRadius
+                                            bottomRightRadius = maxCornerRadius
+                                        default:
+                                            topLeftRadius = maxCornerRadius
+                                            topRightRadius = maxCornerRadius
+                                            bottomLeftRadius = maxCornerRadius
+                                            bottomRightRadius = maxCornerRadius
+                                        }
+
+                                        let strokeInset: CGFloat = 1.0
+                                        let additionalInset: CGFloat = 1.0
+                                        let inset: CGFloat = strokeInset + additionalInset
+                                        let rightInset: CGFloat = inset + 0.0
+                                        let layerWidth = animatingBackgroundNodeBounds.width
+                                        let layerHeight = animatingBackgroundNodeBounds.height
+
+                                        // Points in corners to draw arcs around
+                                        let topLeftX: CGFloat = inset + topLeftRadius
+                                        let topLeftY: CGFloat = inset + topLeftRadius
+                                        let topRightX: CGFloat = layerWidth - rightInset - topRightRadius
+                                        let topRightY: CGFloat = inset + topRightRadius
+                                        let bottomRightX: CGFloat = layerWidth - rightInset - bottomRightRadius
+                                        let bottomRightY: CGFloat = layerHeight - inset - bottomRightRadius
+                                        let bottomLeftX: CGFloat = inset + bottomLeftRadius
+                                        let bottomLeftY: CGFloat = layerHeight - inset - bottomLeftRadius
+
+                                        // Boarders
+                                        let leftX: CGFloat = inset
+                                        let topY: CGFloat = inset
+                                        let rightX: CGFloat = layerWidth - rightInset
+                                        let bottomY: CGFloat = layerHeight - inset
+
+                                        path.move(to: CGPoint(x: leftX, y: topLeftY))
+                                        path.addArc(withCenter: CGPoint(x: topLeftX, y: topLeftY),
+                                                    radius: topLeftRadius,
+                                                    startAngle: toRadians(180.0),
+                                                    endAngle: toRadians(270.0),
+                                                    clockwise: true)
+                                        path.addLine(to: CGPoint(x: topRightX, y: topY))
+                                        path.addArc(withCenter: CGPoint(x: topRightX, y: topRightY),
+                                                    radius: topRightRadius,
+                                                    startAngle: toRadians(270.0),
+                                                    endAngle: toRadians(0.0),
+                                                    clockwise: true)
+                                        path.addLine(to: CGPoint(x: rightX, y: bottomRightY))
+                                        path.addArc(withCenter: CGPoint(x: bottomRightX, y: bottomRightY),
+                                                    radius: bottomRightRadius,
+                                                    startAngle: toRadians(0.0),
+                                                    endAngle: toRadians(90.0),
+                                                    clockwise: true)
+                                        path.addLine(to: CGPoint(x: bottomLeftX, y: bottomY))
+                                        path.addArc(withCenter: CGPoint(x: bottomLeftX, y: bottomLeftY),
+                                                    radius: bottomLeftRadius,
+                                                    startAngle: toRadians(90.0),
+                                                    endAngle: toRadians(180.0),
+                                                    clockwise: true)
+                                        path.addLine(to: CGPoint(x: leftX, y: topLeftY))
+                                        path.close()
+                                    }
+
+                                    let redrawPathAnimation = CABasicAnimation(keyPath: "path")
+                                    redrawPathAnimation.fromValue = backgroundShapeLayer.path
+                                    redrawPathAnimation.toValue = path.cgPath
+                                    redrawPathAnimation.duration = duration
+                                    backgroundShapeLayer.path = path.cgPath // final
+
+                                    let newStrokeColor = animatingBackgroundNode.chatMessageBackgroundStrokeColor.cgColor
+                                    let redrawStrokeAnimation = CABasicAnimation(keyPath: "strokeColor")
+                                    redrawStrokeAnimation.fromValue = backgroundShapeLayer.strokeColor
+                                    redrawStrokeAnimation.toValue = newStrokeColor
+                                    redrawStrokeAnimation.duration = duration
+                                    backgroundShapeLayer.strokeColor = newStrokeColor // final
+
+                                    let newFillColor = animatingBackgroundNode.chatMessageBackgroundFillColor.cgColor
+                                    let redrawFillAnimation = CABasicAnimation(keyPath: "fillColor")
+                                    redrawFillAnimation.fromValue = backgroundShapeLayer.fillColor
+                                    redrawFillAnimation.toValue = newFillColor
+                                    redrawFillAnimation.duration = duration
+                                    backgroundShapeLayer.fillColor = newFillColor // final
+
+                                    let animations = [redrawPathAnimation, redrawStrokeAnimation, redrawFillAnimation]
+                                    addAnimations(backgroundShapeLayer, animations)
                                 }
 
                                 do { // animatingContentNode

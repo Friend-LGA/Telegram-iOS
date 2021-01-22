@@ -188,6 +188,11 @@ public final class PrincipalThemeEssentialGraphics {
     
     public let hasWallpaper: Bool
     
+    public private(set) var chatMessageBackgroundFillColor: UIColor
+    public private(set) var chatMessageBackgroundStrokeColor: UIColor
+    public private(set) var chatMessageBackgroundMinCornerRadius: CGFloat
+    public private(set) var chatMessageBackgroundMaxCornerRadius: CGFloat
+
     init(mediaBox: MediaBox, presentationTheme: PresentationTheme, wallpaper initialWallpaper: TelegramWallpaper, preview: Bool = false, knockoutMode: Bool, bubbleCorners: PresentationChatBubbleCorners) {
         let theme = presentationTheme.chat
         var wallpaper = initialWallpaper
@@ -196,6 +201,9 @@ public final class PrincipalThemeEssentialGraphics {
         let incoming: PresentationThemeBubbleColorComponents = wallpaper.isEmpty ? theme.message.incoming.bubble.withoutWallpaper : theme.message.incoming.bubble.withWallpaper
         let outgoing: PresentationThemeBubbleColorComponents = wallpaper.isEmpty ? theme.message.outgoing.bubble.withoutWallpaper : theme.message.outgoing.bubble.withWallpaper
         
+        self.chatMessageBackgroundFillColor = outgoing.fill
+        self.chatMessageBackgroundStrokeColor = outgoing.stroke
+
         if knockoutMode {
             let wallpaperImage = chatControllerBackgroundImage(theme: presentationTheme, wallpaper: wallpaper, mediaBox: mediaBox, knockoutMode: false)
             self.incomingBubbleGradientImage = wallpaperImage
@@ -245,7 +253,10 @@ public final class PrincipalThemeEssentialGraphics {
         let serviceColor = serviceMessageColorComponents(chatTheme: theme, wallpaper: wallpaper)
         
         let maxCornerRadius = bubbleCorners.mainRadius
+        self.chatMessageBackgroundMaxCornerRadius = maxCornerRadius
+
         let minCornerRadius = (bubbleCorners.mergeBubbleCorners && maxCornerRadius >= 10.0) ? bubbleCorners.auxiliaryRadius : bubbleCorners.mainRadius
+        self.chatMessageBackgroundMinCornerRadius = minCornerRadius
         
         let emptyImage = UIImage()
         if preview {

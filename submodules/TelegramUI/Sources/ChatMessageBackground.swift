@@ -71,6 +71,40 @@ class ChatMessageBackground: ASDisplayNode {
         self.imageNode.image != nil
     }
     
+    public var chatMessageBackgroundFillColor: UIColor {
+        guard let graphics = self.graphics else { return UIColor.clear }
+        return graphics.chatMessageBackgroundFillColor
+    }
+
+    public var chatMessageBackgroundStrokeColor: UIColor {
+        guard let graphics = self.graphics else { return UIColor.clear }
+        return graphics.chatMessageBackgroundStrokeColor
+    }
+
+    public var chatMessageBackgroundMinCornerRadius: CGFloat {
+        guard let graphics = self.graphics else { return 8.0 } // Hooray to magic numbers!!!
+        return graphics.chatMessageBackgroundMinCornerRadius
+    }
+
+    public var chatMessageBackgroundMaxCornerRadius: CGFloat {
+        guard let graphics = self.graphics else { return 16.0 }
+        return graphics.chatMessageBackgroundMaxCornerRadius
+    }
+
+    public var neighborsDirection: MessageBubbleImageNeighbors {
+        switch self.type {
+        case let .outgoing(mergeType):
+            switch mergeType {
+            case .Bottom:
+                return .bottom
+            default:
+                return .none
+            }
+        default:
+            return .none
+        }
+    }
+
     override convenience init() {
         self.init(animatedFromTextPanel: false)
     }
