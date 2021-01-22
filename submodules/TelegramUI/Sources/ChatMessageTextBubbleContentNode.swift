@@ -39,7 +39,7 @@ private final class CachedChatMessageText {
 class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
     private let textNode: TextNode
     private let textAccessibilityOverlayNode: TextAccessibilityOverlayNode
-    private let statusNode: ChatMessageDateAndStatusNode
+    public let statusNode: ChatMessageDateAndStatusNode
     private var linkHighlightingNode: LinkHighlightingNode?
     private var textSelectionNode: TextSelectionNode?
     

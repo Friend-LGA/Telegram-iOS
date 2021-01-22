@@ -355,8 +355,6 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
             }
         }
     }
-     
-    public var isLayoutLocked: Bool = false
 
     private let mainContextSourceNode: ContextExtractedContentContainingNode
     public let mainContainerNode: ContextControllerSourceNode
@@ -418,13 +416,17 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
         }
     }
     
-    required init() {
+    required convenience init() {
+        self.init(animatedFromTextPanel: false)
+    }
+
+    init(animatedFromTextPanel: Bool = false) {
         self.mainContextSourceNode = ContextExtractedContentContainingNode()
         self.mainContainerNode = ContextControllerSourceNode()
         self.backgroundWallpaperNode = ChatMessageBubbleBackdrop()
         self.contentContainersWrapperNode = ASDisplayNode()
         
-        self.backgroundNode = ChatMessageBackground()
+        self.backgroundNode = ChatMessageBackground(animatedFromTextPanel: animatedFromTextPanel)
         self.shadowNode = ChatMessageShadowNode()
         self.messageAccessibilityArea = AccessibilityAreaNode()
         
@@ -539,6 +541,16 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
     
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    public var chatMessageTextBubbleContentNode: ChatMessageTextBubbleContentNode? {
+        guard !self.contentNodes.isEmpty else { return nil }
+
+        let result = self.contentNodes.first { (contentNode) -> Bool in
+            return contentNode is ChatMessageTextBubbleContentNode
+        }
+
+        return result as? ChatMessageTextBubbleContentNode
     }
 
     override func animateInsertion(_ currentTimestamp: Double, duration: Double, short: Bool) {
@@ -2139,11 +2151,6 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
         updatedShareButtonBackground: UIImage?
     ) -> Void {
         guard let strongSelf = selfReference.value else {
-            return
-        }
-
-        guard !strongSelf.isLayoutLocked else {
-            // Store and call it when layout is unlocked
             return
         }
 

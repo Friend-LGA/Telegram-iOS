@@ -4218,40 +4218,135 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                                 guard let sself = wself else { return }
                                 guard let node = node as? ChatMessageBubbleItemNode else { return }
                                 guard let inputPanelNode = sself.chatDisplayNode.inputPanelNode as? ChatTextInputPanelNode else { return }
+
                                 let chatDisplayNode = sself.chatDisplayNode
+
                                 let textInputNode = inputPanelNode.textInputContainer
                                 let textInputNodeFrameConverted = textInputNode.view.convert(textInputNode.view.bounds, to: chatDisplayNode.view)
+
                                 let animatingNode = node.mainContainerNode
-                                guard let animatingNodeSupernode = animatingNode.supernode else { return }
-                                let animatingNodeIndex = animatingNodeSupernode.subnodes!.firstIndex(of: animatingNode)!
                                 let animatingNodeFrame = animatingNode.frame
                                 // ASDisplayNode.convert() is giving wrong value, using UIView.convert() instead
                                 let animatingNodeFrameConverted = animatingNode.view.convert(animatingNode.view.bounds, to: chatDisplayNode.view)
-                                let animatingFrameOffsetX = node.backgroundNode.view.convert(node.backgroundNode.view.bounds, to: animatingNode.view).origin.x
 
-                                node.isLayoutLocked = true
+                                let animatingNodeSupernode = animatingNode.supernode!
+                                let animatingNodeIndex = animatingNodeSupernode.subnodes!.firstIndex(of: animatingNode)!
+
+                                let animatingBackgroundNode = node.backgroundNode
+                                let animatingBackgroundNodeFrame = animatingBackgroundNode.frame
+                                let animatingBackgroundNodeBounds = animatingBackgroundNode.bounds
+
+                                let animatingContentNode = node.chatMessageTextBubbleContentNode!
+                                let animatingContentNodeFrame = animatingContentNode.frame
+
+                                let animatingStatusNode = animatingContentNode.statusNode
+                                let animatingStatusNodeAlpha = animatingStatusNode.alpha
+
                                 animatingNode.removeFromSupernode()
                                 chatDisplayNode.addSubnode(animatingNode)
-                                animatingNode.frame = animatingNodeFrameConverted
 
-                                let transition = ContainedViewLayoutTransition.animated(duration: 0.5, curve: .easeInOut)
-                                transition.animateFrame(
-                                    node: animatingNode,
-                                    from: CGRect(origin: textInputNodeFrameConverted.origin, size: animatingNode.frame.size).offsetBy(dx: -animatingFrameOffsetX, dy: CGFloat.zero),
-                                    to: animatingNodeFrameConverted,
-                                    completion: { [weak wNode = node,
-                                                   weak wAnimatingNode = animatingNode,
-                                                   weak wAnimatingNodeSupernode = animatingNodeSupernode] (_: Bool) in
-                                        guard let sNode = wNode, let sAnimatingNode = wAnimatingNode, let sAnimatingNodeSupernode = wAnimatingNodeSupernode else { return }
-                                        sAnimatingNode.removeFromSupernode()
-                                        sAnimatingNodeSupernode.insertSubnode(sAnimatingNode, at: animatingNodeIndex)
-                                        sAnimatingNode.frame = animatingNodeFrame
-                                        sNode.isLayoutLocked = false
-                                        if let completion = completion {
-                                            completion()
-                                        }
+                                animatingNode.frame = textInputNodeFrameConverted
+                                animatingBackgroundNode.frame = CGRect(origin: CGPoint.zero, size: textInputNodeFrameConverted.size)
+                                animatingContentNode.frame = CGRect(origin: CGPoint.zero, size: textInputNodeFrameConverted.size)
+                                animatingStatusNode.layer.opacity = 0.0
+
+                                let backgroundShapeLayer = CAShapeLayer()
+                                backgroundShapeLayer.path = UIBezierPath(roundedRect: animatingNode.bounds, cornerRadius: inputPanelNode.minimalInputHeight()).cgPath
+                                backgroundShapeLayer.strokeColor = inputPanelNode.inputStrokeColor().cgColor
+                                backgroundShapeLayer.fillColor = inputPanelNode.inputBackgroundColor().cgColor
+                                animatingBackgroundNode.layer.addSublayer(backgroundShapeLayer)
+
+                                let duration = 0.5
+
+                                CATransaction.begin()
+                                CATransaction.setCompletionBlock { [weak wAnimatingNode = animatingNode,
+                                                                    weak wAnimatingBackgroundNode = animatingBackgroundNode,
+                                                                    weak wAnimatingNodeSupernode = animatingNodeSupernode] in
+                                    guard let sAnimatingNode = wAnimatingNode,
+                                          let sAnimatingBackgroundNode = wAnimatingBackgroundNode,
+                                          let sAnimatingNodeSupernode = wAnimatingNodeSupernode else {
+                                        return
                                     }
-                                )
+                                    backgroundShapeLayer.removeFromSuperlayer()
+                                    sAnimatingNode.removeFromSupernode()
+                                    sAnimatingNodeSupernode.insertSubnode(sAnimatingNode, at: animatingNodeIndex)
+                                    sAnimatingBackgroundNode.showImages()
+                                    if let completion = completion {
+                                        completion()
+                                    }
+                                }
+
+                                func calculatePosition(_ frame: CGRect) -> CGPoint {
+                                    return CGPoint(x: frame.midX, y: frame.midY)
+                                }
+
+                                func resizeAnimation(_ layer: CALayer, _ size: CGSize, _ duration: Double) -> CABasicAnimation {
+                                    let resizeAnimation = CABasicAnimation(keyPath: "bounds")
+                                    resizeAnimation.fromValue = layer.bounds
+                                    resizeAnimation.toValue = [CGFloat.zero, CGFloat.zero, size.width, size.height]
+                                    resizeAnimation.duration = duration
+                                    return resizeAnimation
+                                }
+
+                                func repositionAnimation(_ layer: CALayer, _ position: CGPoint, _ duration: Double) -> CABasicAnimation {
+                                    let repositionAnimation = CABasicAnimation(keyPath: "position")
+                                    repositionAnimation.fromValue = layer.position
+                                    repositionAnimation.toValue = [position.x, position.y]
+                                    repositionAnimation.duration = duration
+                                    return repositionAnimation
+                                }
+
+                                func addAnimations(_ layer: CALayer, _ animations: [CAAnimation]) {
+                                    let animationGroup = CAAnimationGroup()
+                                    animationGroup.animations = animations
+                                    animationGroup.duration = duration
+                                    layer.add(animationGroup, forKey: "animationGroup")
+                                }
+
+                                do { // animatingNode
+                                    let animations = [
+                                        resizeAnimation(animatingNode.layer, animatingNodeFrameConverted.size, duration),
+                                        repositionAnimation(animatingNode.layer, calculatePosition(animatingNodeFrameConverted), duration)
+                                    ]
+                                    animatingNode.frame = animatingNodeFrame // final
+                                    addAnimations(animatingNode.layer, animations)
+                                }
+
+                                do { // animatingBackgroundNode
+                                    let animations = [
+                                        resizeAnimation(animatingBackgroundNode.layer, animatingBackgroundNodeFrame.size, duration),
+                                        repositionAnimation(animatingBackgroundNode.layer, calculatePosition(animatingBackgroundNodeFrame), duration)
+                                    ]
+                                    animatingBackgroundNode.frame = animatingBackgroundNodeFrame // final
+                                    addAnimations(animatingBackgroundNode.layer, animations)
+
+                                    let redrawAnimation = CABasicAnimation(keyPath: "path")
+                                    redrawAnimation.toValue = UIBezierPath(roundedRect: animatingBackgroundNodeBounds, cornerRadius: 8.0).cgPath
+                                    redrawAnimation.duration = duration
+                                    redrawAnimation.fillMode = CAMediaTimingFillMode.forwards
+                                    redrawAnimation.isRemovedOnCompletion = false
+                                    backgroundShapeLayer.add(redrawAnimation, forKey: "animation")
+                                }
+
+                                do { // animatingContentNode
+                                    let animations = [
+                                        resizeAnimation(animatingContentNode.layer, animatingContentNodeFrame.size, duration),
+                                        repositionAnimation(animatingContentNode.layer, calculatePosition(animatingContentNodeFrame), duration)
+                                    ]
+                                    animatingContentNode.frame = animatingContentNodeFrame // final
+                                    addAnimations(animatingContentNode.layer, animations)
+                                }
+
+                                do { // animatingStatusNode
+                                    let showAnimation = CABasicAnimation(keyPath: "opacity")
+                                    showAnimation.fromValue = animatingStatusNode.layer.opacity
+                                    showAnimation.toValue = animatingStatusNodeAlpha
+                                    showAnimation.duration = duration
+                                    animatingStatusNode.alpha = animatingStatusNodeAlpha // final
+                                    animatingStatusNode.layer.add(showAnimation, forKey: "animation")
+                                }
+
+                                CATransaction.commit()
                             }
                         }
 

@@ -341,7 +341,7 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
             var accentTextColor: UIColor = .blue
             var baseFontSize: CGFloat = 17.0
             if let presentationInterfaceState = self.presentationInterfaceState {
-                textColor = presentationInterfaceState.theme.chat.inputPanel.inputTextColor
+                textColor = self.inputTextColor(presentationInterfaceState)
                 accentTextColor = presentationInterfaceState.theme.chat.inputPanel.panelControlAccentColor
                 baseFontSize = max(17.0, presentationInterfaceState.fontSize.baseDisplaySize)
             }
@@ -370,7 +370,7 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
                 var textColor: UIColor = .black
                 var baseFontSize: CGFloat = 17.0
                 if let presentationInterfaceState = self.presentationInterfaceState {
-                    textColor = presentationInterfaceState.theme.chat.inputPanel.inputTextColor
+                    textColor = self.inputTextColor(presentationInterfaceState)
                     baseFontSize = max(17.0, presentationInterfaceState.fontSize.baseDisplaySize)
                 }
                 textInputNode.attributedText = NSAttributedString(string: value, font: Font.regular(baseFontSize), textColor: textColor)
@@ -534,7 +534,7 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
         var baseFontSize: CGFloat = 17.0
         var keyboardAppearance: UIKeyboardAppearance = UIKeyboardAppearance.default
         if let presentationInterfaceState = self.presentationInterfaceState {
-            textColor = presentationInterfaceState.theme.chat.inputPanel.inputTextColor
+            textColor = self.inputTextColor(presentationInterfaceState)
             tintColor = presentationInterfaceState.theme.list.itemAccentColor
             baseFontSize = max(17.0, presentationInterfaceState.fontSize.baseDisplaySize)
             keyboardAppearance = presentationInterfaceState.theme.rootController.keyboardColor.keyboardAppearance
@@ -667,6 +667,30 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
         return minimalHeight
     }
     
+    public func inputTextColor(_ interfaceState: ChatPresentationInterfaceState? = nil) -> UIColor {
+        guard let interfaceState = interfaceState ?? self.presentationInterfaceState else { return UIColor.black }
+        return interfaceState.theme.chat.inputPanel.inputTextColor
+    }
+
+    public func inputBackgroundColor(_ interfaceState: ChatPresentationInterfaceState? = nil) -> UIColor {
+        guard let interfaceState = interfaceState ?? self.presentationInterfaceState else { return UIColor.clear }
+        return interfaceState.theme.chat.inputPanel.inputBackgroundColor
+    }
+
+    public func inputStrokeColor(_ interfaceState: ChatPresentationInterfaceState? = nil) -> UIColor {
+        guard let interfaceState = interfaceState ?? self.presentationInterfaceState else { return UIColor.clear }
+        return interfaceState.theme.chat.inputPanel.inputStrokeColor
+    }
+
+    public func minimalInputHeight(_ interfaceState: ChatPresentationInterfaceState? = nil, _ metrics: LayoutMetrics? = nil) -> CGFloat {
+        guard let interfaceState = interfaceState ?? self.presentationInterfaceState,
+              let metrics = metrics ?? self.validLayout?.5 else {
+                return CGFloat.zero
+              }
+        let textFieldMinHeight = calclulateTextFieldMinHeight(interfaceState, metrics: metrics)
+        return 2.0 + textFieldMinHeight
+    }
+
     override func updateLayout(width: CGFloat, leftInset: CGFloat, rightInset: CGFloat, additionalSideInsets: UIEdgeInsets, maxHeight: CGFloat, isSecondary: Bool, transition: ContainedViewLayoutTransition, interfaceState: ChatPresentationInterfaceState, metrics: LayoutMetrics) -> CGFloat {
         let previousAdditionalSideInsets = self.validLayout?.3
         self.validLayout = (width, leftInset, rightInset, additionalSideInsets, maxHeight, metrics, isSecondary)
@@ -729,8 +753,8 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
             if self.theme !== interfaceState.theme {
                 updateSendButtonIcon = true
                 
-                if self.theme == nil || !self.theme!.chat.inputPanel.inputTextColor.isEqual(interfaceState.theme.chat.inputPanel.inputTextColor) {
-                    let textColor = interfaceState.theme.chat.inputPanel.inputTextColor
+                if self.theme == nil || !self.theme!.chat.inputPanel.inputTextColor.isEqual(self.inputTextColor(interfaceState)) {
+                    let textColor = self.inputTextColor(interfaceState)
                     let baseFontSize = max(17.0, interfaceState.fontSize.baseDisplaySize)
                     
                     if let textInputNode = self.textInputNode {
@@ -752,7 +776,7 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
                     textInputNode.keyboardAppearance = keyboardAppearance
                 }
                 
-                self.textInputContainer.backgroundColor = interfaceState.theme.chat.inputPanel.inputBackgroundColor
+                self.textInputContainer.backgroundColor = self.inputBackgroundColor(interfaceState)
                 
                 self.theme = interfaceState.theme
                 
@@ -765,17 +789,14 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
                
                 self.actionButtons.updateTheme(theme: interfaceState.theme)
                 
-                let textFieldMinHeight = calclulateTextFieldMinHeight(interfaceState, metrics: metrics)
-                let minimalInputHeight: CGFloat = 2.0 + textFieldMinHeight
-                
-                let backgroundColor: UIColor
+                var backgroundColor: UIColor
                 if case let .color(color) = interfaceState.chatWallpaper, UIColor(rgb: color).isEqual(interfaceState.theme.chat.inputPanel.panelBackgroundColorNoWallpaper) {
                     backgroundColor = interfaceState.theme.chat.inputPanel.panelBackgroundColorNoWallpaper
                 } else {
                     backgroundColor = interfaceState.theme.chat.inputPanel.panelBackgroundColor
                 }
                 
-                self.textInputBackgroundNode.image = textInputBackgroundImage(backgroundColor: backgroundColor, strokeColor: interfaceState.theme.chat.inputPanel.inputStrokeColor, diameter: minimalInputHeight)
+                self.textInputBackgroundNode.image = textInputBackgroundImage(backgroundColor: backgroundColor, strokeColor: self.inputStrokeColor(interfaceState), diameter: self.minimalInputHeight(interfaceState, metrics))
                 
                 self.searchLayoutClearImageNode.image = PresentationResourcesChat.chatInputTextFieldClearImage(interfaceState.theme)
                 
@@ -1862,7 +1883,7 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
             var accentTextColor: UIColor = .blue
             var baseFontSize: CGFloat = 17.0
             if let presentationInterfaceState = self.presentationInterfaceState {
-                textColor = presentationInterfaceState.theme.chat.inputPanel.inputTextColor
+                textColor = self.inputTextColor(presentationInterfaceState)
                 accentTextColor = presentationInterfaceState.theme.chat.inputPanel.panelControlAccentColor
                 baseFontSize = max(17.0, presentationInterfaceState.fontSize.baseDisplaySize)
             }

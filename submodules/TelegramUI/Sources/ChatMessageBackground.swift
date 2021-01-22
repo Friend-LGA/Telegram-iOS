@@ -65,12 +65,17 @@ class ChatMessageBackground: ASDisplayNode {
     private var maskMode: Bool?
     private let imageNode: ASImageNode
     private let outlineImageNode: ASImageNode
+    private var imagesAreHidden: Bool
     
     var hasImage: Bool {
         self.imageNode.image != nil
     }
     
-    override init() {
+    override convenience init() {
+        self.init(animatedFromTextPanel: false)
+    }
+
+    init(animatedFromTextPanel: Bool = false) {
         self.imageNode = ASImageNode()
         self.imageNode.displaysAsynchronously = false
         self.imageNode.displayWithoutProcessing = true
@@ -79,16 +84,39 @@ class ChatMessageBackground: ASDisplayNode {
         self.outlineImageNode.displaysAsynchronously = false
         self.outlineImageNode.displayWithoutProcessing = true
         
+        self.imagesAreHidden = animatedFromTextPanel
+
         super.init()
         
         self.isUserInteractionEnabled = false
+
+        if self.imagesAreHidden {
+            self.imageNode.isHidden = true
+            self.outlineImageNode.isHidden = true
+        } else {
+            self.addSubnode(self.outlineImageNode)
+            self.addSubnode(self.imageNode)
+        }
+    }
+
+    public func showImages() {
+        guard self.imagesAreHidden else { return }
+        self.imageNode.isHidden = false
+        self.outlineImageNode.isHidden = false
         self.addSubnode(self.outlineImageNode)
         self.addSubnode(self.imageNode)
+        self.imagesAreHidden = false
     }
     
     func updateLayout(size: CGSize, transition: ContainedViewLayoutTransition) {
-        transition.updateFrame(node: self.imageNode, frame: CGRect(origin: CGPoint(), size: size).insetBy(dx: -1.0, dy: -1.0))
-        transition.updateFrame(node: self.outlineImageNode, frame: CGRect(origin: CGPoint(), size: size).insetBy(dx: -1.0, dy: -1.0))
+        let newFrame = CGRect(origin: CGPoint(), size: size).insetBy(dx: -1.0, dy: -1.0)
+        if self.imagesAreHidden {
+            self.imageNode.frame = newFrame
+            self.outlineImageNode.frame = newFrame
+        } else {
+            transition.updateFrame(node: self.imageNode, frame: newFrame)
+            transition.updateFrame(node: self.outlineImageNode, frame: newFrame)
+        }
     }
     
     func setMaskMode(_ maskMode: Bool) {
@@ -209,24 +237,26 @@ class ChatMessageBackground: ASDisplayNode {
             outlineImage = nil
         }
         
-        if let previousType = previousType, previousType != .none, type == .none {
-            if transition.isAnimated {
-                let tempLayer = CALayer()
-                tempLayer.contents = self.imageNode.layer.contents
-                tempLayer.contentsScale = self.imageNode.layer.contentsScale
-                tempLayer.rasterizationScale = self.imageNode.layer.rasterizationScale
-                tempLayer.contentsGravity = self.imageNode.layer.contentsGravity
-                tempLayer.contentsCenter = self.imageNode.layer.contentsCenter
-                
-                tempLayer.frame = self.bounds
-                self.layer.insertSublayer(tempLayer, above: self.imageNode.layer)
-                transition.updateAlpha(layer: tempLayer, alpha: 0.0, completion: { [weak tempLayer] _ in
-                    tempLayer?.removeFromSuperlayer()
-                })
-            }
-        } else if transition.isAnimated {
-            if let previousContents = self.imageNode.layer.contents, let image = image {
-                self.imageNode.layer.animate(from: previousContents as AnyObject, to: image.cgImage! as AnyObject, keyPath: "contents", timingFunction: CAMediaTimingFunctionName.easeInEaseOut.rawValue, duration: 0.42)
+        if !self.imagesAreHidden {
+            if let previousType = previousType, previousType != .none, type == .none {
+                if transition.isAnimated {
+                    let tempLayer = CALayer()
+                    tempLayer.contents = self.imageNode.layer.contents
+                    tempLayer.contentsScale = self.imageNode.layer.contentsScale
+                    tempLayer.rasterizationScale = self.imageNode.layer.rasterizationScale
+                    tempLayer.contentsGravity = self.imageNode.layer.contentsGravity
+                    tempLayer.contentsCenter = self.imageNode.layer.contentsCenter
+
+                    tempLayer.frame = self.bounds
+                    self.layer.insertSublayer(tempLayer, above: self.imageNode.layer)
+                    transition.updateAlpha(layer: tempLayer, alpha: 0.0, completion: { [weak tempLayer] _ in
+                        tempLayer?.removeFromSuperlayer()
+                    })
+                }
+            } else if transition.isAnimated {
+                if let previousContents = self.imageNode.layer.contents, let image = image {
+                    self.imageNode.layer.animate(from: previousContents as AnyObject, to: image.cgImage! as AnyObject, keyPath: "contents", timingFunction: CAMediaTimingFunctionName.easeInEaseOut.rawValue, duration: 0.42)
+                }
             }
         }
         
