@@ -334,6 +334,7 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
     
     private var textInputPanelNode: ChatTextInputPanelNode?
     private var inputMediaNode: ChatMediaInputNode?
+    public private(set) var textInputLastFrame: CGRect?
     
     let navigateButtons: ChatHistoryNavigationButtons
     
@@ -608,6 +609,10 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
                 if case .scheduledMessages = strongSelf.chatPresentationInterfaceState.subject, strongSelf.chatPresentationInterfaceState.editMessageState == nil {
                     strongSelf.controllerInteraction.scheduleCurrentMessage()
                 } else {
+                    strongSelf.textInputLastFrame = nil
+                    if let textInputNode = strongSelf.textInputPanelNode?.textInputContainer {
+                        strongSelf.textInputLastFrame = textInputNode.view.convert(textInputNode.view.bounds, to: strongSelf.view)
+                    }
                     strongSelf.sendCurrentMessage()
                 }
             }

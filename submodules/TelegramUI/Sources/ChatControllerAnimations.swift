@@ -16,7 +16,7 @@ fileprivate extension CGRect {
 
 fileprivate struct Config {
     let animationDuration: Double = 0.5
-    let textInputNode: (originalFrame: CGRect, convertedFrame: CGRect)
+    let textInputNodeConvertedFrame: CGRect
     let animatingNode: (originalFrame: CGRect, convertedFrame: CGRect, originalSubnodeIndex: Int)
     let animatingBackgroundNodeOriginalFrame: CGRect
     let animatingContentNodeOriginalFrame: CGRect
@@ -24,7 +24,7 @@ fileprivate struct Config {
     let textInputStyle: (fillColor: UIColor, strokeColor: UIColor, minimalInputHeight: CGFloat)
     let bubbleStyle: (fillColor: UIColor, strokeColor: UIColor, minCornerRadius: CGFloat, maxCornerRadius: CGFloat, neighborsDirection: MessageBubbleImageNeighbors)
     
-    init(chatControllerNode: ASDisplayNode,
+    init(chatControllerNode: ChatControllerNode,
          inputPanelNode: ChatTextInputPanelNode,
          textInputNode: ASDisplayNode,
          animatingNode: ASDisplayNode,
@@ -33,8 +33,7 @@ fileprivate struct Config {
          animatingContentNode: ASDisplayNode,
          animatingStatusNode: ASDisplayNode) {
         // ASDisplayNode.convert() is giving wrong values, using UIView.convert() instead
-        self.textInputNode = (originalFrame: textInputNode.frame,
-                              convertedFrame: textInputNode.view.convert(textInputNode.view.bounds, to: chatControllerNode.view))
+        self.textInputNodeConvertedFrame = chatControllerNode.textInputLastFrame ?? inputPanelNode.view.convert(inputPanelNode.view.bounds, to: chatControllerNode.view)
         self.animatingNode = (originalFrame: animatingNode.frame,
                               convertedFrame: animatingNode.view.convert(animatingNode.view.bounds, to: chatControllerNode.view),
                               originalSubnodeIndex: animatingNodeSupernode.subnodes!.firstIndex(of: animatingNode)!)
@@ -103,8 +102,8 @@ fileprivate func generateTailImage(_ config: Config) -> UIImage {
 
 fileprivate func generateTextInputBackgroundPath(_ config: Config) -> UIBezierPath {
     let path = UIBezierPath()
-    let layerWidth = config.textInputNode.convertedFrame.width
-    let layerHeight = config.textInputNode.convertedFrame.height
+    let layerWidth = config.textInputNodeConvertedFrame.width
+    let layerHeight = config.textInputNodeConvertedFrame.height
     let radius: CGFloat = min(config.textInputStyle.minimalInputHeight / 2.0, layerHeight / 2.0)
     
     // Points in corners to draw arcs around
@@ -255,7 +254,6 @@ struct ChatControllerAnimations {
             let animatingBackgroundNode = node.backgroundNode
             let animatingContentNode = node.chatMessageTextBubbleContentNode!
             let animatingStatusNode = animatingContentNode.statusNode
-            
             let config = Config(chatControllerNode: chatControllerNode,
                                 inputPanelNode: inputPanelNode,
                                 textInputNode: textInputNode,
@@ -270,9 +268,9 @@ struct ChatControllerAnimations {
             // Mimic text view proportions
             animatingNode.removeFromSupernode()
             chatControllerNode.addSubnode(animatingNode)
-            animatingNode.frame = config.textInputNode.convertedFrame
-            animatingBackgroundNode.frame = config.textInputNode.convertedFrame.toBounds()
-            animatingContentNode.frame = config.textInputNode.convertedFrame.toBounds()
+            animatingNode.frame = config.textInputNodeConvertedFrame
+            animatingBackgroundNode.frame = config.textInputNodeConvertedFrame.toBounds()
+            animatingContentNode.frame = config.textInputNodeConvertedFrame.toBounds()
             animatingStatusNode.alpha = CGFloat.zero
             
             // Create sublayer with tail image.
