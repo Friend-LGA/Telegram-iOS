@@ -19,9 +19,10 @@ fileprivate struct Config {
     let textInputNode: (convertedFrame: CGRect, contentOffset: CGPoint, insets: UIEdgeInsets)
     let animatingNode: (originalFrame: CGRect, convertedFrame: CGRect, originalSubnodeIndex: Int)
     let animatingBackgroundNodeOriginalFrame: CGRect
-    let animatingContentNodeOriginalFrame: CGRect
+    let animatingTextContentNodeOriginalFrame: CGRect
     let animatingTextNode: (originalFrame: CGRect, insets: UIEdgeInsets)
     let animatingStatusNode: (originalFrame: CGRect, originalAlpha: CGFloat)
+    let animatingWebpageContentNodeOriginalFrame: CGRect?
     let textInputStyle: (fillColor: UIColor, strokeColor: UIColor, minimalInputHeight: CGFloat)
     let bubbleStyle: (fillColor: UIColor, strokeColor: UIColor, minCornerRadius: CGFloat, maxCornerRadius: CGFloat, neighborsDirection: MessageBubbleImageNeighbors)
     
@@ -31,9 +32,10 @@ fileprivate struct Config {
          animatingNode: ASDisplayNode,
          animatingNodeSupernode: ASDisplayNode,
          animatingBackgroundNode: ChatMessageBackground,
-         animatingContentNode: ChatMessageTextBubbleContentNode,
+         animatingTextContentNode: ChatMessageTextBubbleContentNode,
          animatingTextNode: ASDisplayNode,
-         animatingStatusNode: ASDisplayNode) {
+         animatingStatusNode: ASDisplayNode,
+         animatingWebpageContentNode: ChatMessageWebpageBubbleContentNode? = nil) {
         // ASDisplayNode.convert() is giving wrong values, using UIView.convert() instead
         self.textInputNode = (convertedFrame: chatControllerNode.textInputLastFrame ?? textInputNode.view.convert(textInputNode.view.bounds, to: chatControllerNode.view),
                               contentOffset: chatControllerNode.textInputLastContentOffset ?? CGPoint.zero,
@@ -44,13 +46,15 @@ fileprivate struct Config {
                               originalSubnodeIndex: animatingNodeSupernode.subnodes!.firstIndex(of: animatingNode)!)
         
         self.animatingBackgroundNodeOriginalFrame = animatingBackgroundNode.frame
-        self.animatingContentNodeOriginalFrame = animatingContentNode.frame
+        self.animatingTextContentNodeOriginalFrame = animatingTextContentNode.frame
         
         self.animatingTextNode = (originalFrame: animatingTextNode.frame,
-                                  insets: animatingContentNode.textNodeInsets)
+                                  insets: animatingTextContentNode.textNodeInsets)
             
         self.animatingStatusNode = (originalFrame: animatingStatusNode.frame,
                                     originalAlpha: animatingStatusNode.alpha)
+        
+        self.animatingWebpageContentNodeOriginalFrame = animatingWebpageContentNode?.frame
         
         self.textInputStyle = (fillColor: inputPanelNode.inputBackgroundColor(),
                                strokeColor: inputPanelNode.inputStrokeColor(),
@@ -263,9 +267,12 @@ struct ChatControllerAnimations {
             let animatingNode = node.mainContainerNode
             let animatingNodeSupernode = animatingNode.supernode!
             let animatingBackgroundNode = node.backgroundNode
-            let animatingContentNode = node.chatMessageTextBubbleContentNode!
-            let animatingTextNode = animatingContentNode.textNode
-            let animatingStatusNode = animatingContentNode.statusNode
+            
+            guard let animatingTextContentNode = node.chatMessageTextBubbleContentNode else { return }
+            let animatingTextNode = animatingTextContentNode.textNode
+            let animatingStatusNode = animatingTextContentNode.statusNode
+            
+            let animatingWebpageContentNode: ChatMessageWebpageBubbleContentNode? = node.chatMessageWebpageBubbleContentNode
             
             let config = Config(chatControllerNode: chatControllerNode,
                                 inputPanelNode: inputPanelNode,
@@ -273,9 +280,10 @@ struct ChatControllerAnimations {
                                 animatingNode: animatingNode,
                                 animatingNodeSupernode: animatingNodeSupernode,
                                 animatingBackgroundNode: animatingBackgroundNode,
-                                animatingContentNode: animatingContentNode,
+                                animatingTextContentNode: animatingTextContentNode,
                                 animatingTextNode: animatingTextNode,
-                                animatingStatusNode: animatingStatusNode)
+                                animatingStatusNode: animatingStatusNode,
+                                animatingWebpageContentNode: animatingWebpageContentNode)
             
             // Remove node content view from list view.
             // Move it above input panel, but below navigation bar
@@ -284,10 +292,10 @@ struct ChatControllerAnimations {
             chatControllerNode.insertSubnode(animatingNode, aboveSubnode: chatControllerNode.inputContextPanelContainer)
             
             animatingNode.frame = config.textInputNode.convertedFrame
-            animatingBackgroundNode.frame = config.textInputNode.convertedFrame.toBounds()
+            animatingNode.clipsToBounds = true
             
-            animatingContentNode.frame = config.textInputNode.convertedFrame.toBounds()
-            animatingContentNode.clipsToBounds = true
+            animatingBackgroundNode.frame = config.textInputNode.convertedFrame.toBounds()
+            animatingTextContentNode.frame = config.textInputNode.convertedFrame.toBounds()
             
             // Actually we should calculate difference in insets here to match content,
             // but apparently it is working fine without it. Needs to be investigated.
@@ -295,12 +303,18 @@ struct ChatControllerAnimations {
             let insetsOffsetY: CGFloat = 0
             animatingTextNode.frame = animatingTextNode.frame.offsetBy(dx: CGFloat.zero, dy: -config.textInputNode.contentOffset.y + insetsOffsetY)
             
-            let animatingStatusNodeFrameOffsetX = config.animatingContentNodeOriginalFrame.width - config.animatingStatusNode.originalFrame.maxX
-            let animatingStatusNodeFrameOffsetY = config.animatingContentNodeOriginalFrame.height - config.animatingStatusNode.originalFrame.maxY
-            animatingStatusNode.frame = CGRect(origin: CGPoint(x: animatingContentNode.bounds.width - animatingStatusNodeFrameOffsetX - config.animatingStatusNode.originalFrame.size.width,
-                                                               y: animatingContentNode.bounds.height - animatingStatusNodeFrameOffsetY - config.animatingStatusNode.originalFrame.size.height),
-                                               size: config.animatingStatusNode.originalFrame.size)
+            let animatingStatusNodeFrameOffsetX = config.animatingTextContentNodeOriginalFrame.width - config.animatingStatusNode.originalFrame.maxX
+            let animatingStatusNodeFrameOffsetY = config.animatingTextContentNodeOriginalFrame.height - config.animatingStatusNode.originalFrame.maxY
+            animatingStatusNode.frame = CGRect(origin: CGPoint(x: animatingTextContentNode.bounds.width - animatingStatusNodeFrameOffsetX - config.animatingStatusNode.originalFrame.size.width,
+                                                               y: animatingTextContentNode.bounds.height - animatingStatusNodeFrameOffsetY - config.animatingStatusNode.originalFrame.size.height),
+                                               size: animatingStatusNode.frame.size)
             animatingStatusNode.alpha = CGFloat.zero
+            
+            if let animatingWebpageContentNode = animatingWebpageContentNode,
+               let originalFrame = config.animatingWebpageContentNodeOriginalFrame {
+                animatingWebpageContentNode.frame = CGRect(origin: CGPoint(x: 0.0, y: originalFrame.minY),
+                                                           size: config.textInputNode.convertedFrame.size)
+            }
                         
             // Create sublayer with tail image.
             // Actualy here are 3 ways it can be improved:
@@ -326,7 +340,7 @@ struct ChatControllerAnimations {
             CATransaction.begin()
             CATransaction.setCompletionBlock { [weak wAnimatingNode = animatingNode,
                                                 weak wAnimatingBackgroundNode = animatingBackgroundNode,
-                                                weak wAnimatingContentNode = animatingContentNode,
+                                                weak wAnimatingContentNode = animatingTextContentNode,
                                                 weak wAnimatingNodeSupernode = animatingNodeSupernode] in
                 guard let sAnimatingNode = wAnimatingNode,
                       let sAnimatingBackgroundNode = wAnimatingBackgroundNode,
@@ -340,7 +354,7 @@ struct ChatControllerAnimations {
                 sAnimatingNodeSupernode.insertSubnode(sAnimatingNode, at: config.animatingNode.originalSubnodeIndex)
                 sAnimatingNode.frame = config.animatingNode.originalFrame
                 sAnimatingBackgroundNode.frame = config.animatingBackgroundNodeOriginalFrame
-                sAnimatingContentNode.frame = config.animatingContentNodeOriginalFrame
+                sAnimatingContentNode.frame = config.animatingTextContentNodeOriginalFrame
                 sAnimatingBackgroundNode.showImages()
                 if let completion = completion {
                     completion()
@@ -406,13 +420,13 @@ struct ChatControllerAnimations {
                 addAnimations(tailLayer, animations, config.animationDuration)
             }
             
-            do { // animatingContentNode
+            do { // animatingTextContentNode
                 let animations = [
-                    setupResizeAnimation(animatingContentNode.layer, config.animatingContentNodeOriginalFrame.size, config.animationDuration),
-                    setupRepositionAnimation(animatingContentNode.layer, config.animatingContentNodeOriginalFrame.position, config.animationDuration)
+                    setupResizeAnimation(animatingTextContentNode.layer, config.animatingTextContentNodeOriginalFrame.size, config.animationDuration),
+                    setupRepositionAnimation(animatingTextContentNode.layer, config.animatingTextContentNodeOriginalFrame.position, config.animationDuration)
                 ]
-                animatingContentNode.frame = config.animatingContentNodeOriginalFrame
-                addAnimations(animatingContentNode.layer, animations, config.animationDuration)
+                animatingTextContentNode.frame = config.animatingTextContentNodeOriginalFrame
+                addAnimations(animatingTextContentNode.layer, animations, config.animationDuration)
             }
             
             do { // animatingTextNode
@@ -433,6 +447,17 @@ struct ChatControllerAnimations {
                 
                 let animations = [repositionAnimation, showAnimation]
                 addAnimations(animatingStatusNode.layer, animations, config.animationDuration)
+            }
+            
+            // animatingWebpageContentNode
+            if let animatingWebpageContentNode = animatingWebpageContentNode,
+               let originalFrame = config.animatingWebpageContentNodeOriginalFrame {
+                let animations = [
+                    setupResizeAnimation(animatingWebpageContentNode.layer, originalFrame.size, config.animationDuration),
+                    setupRepositionAnimation(animatingWebpageContentNode.layer, originalFrame.position, config.animationDuration)
+                ]
+                animatingWebpageContentNode.frame = originalFrame
+                addAnimations(animatingWebpageContentNode.layer, animations, config.animationDuration)
             }
             
             CATransaction.commit()

@@ -552,6 +552,16 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
 
         return result as? ChatMessageTextBubbleContentNode
     }
+    
+    public var chatMessageWebpageBubbleContentNode: ChatMessageWebpageBubbleContentNode? {
+        guard !self.contentNodes.isEmpty else { return nil }
+
+        let result = self.contentNodes.first { (contentNode) -> Bool in
+            return contentNode is ChatMessageWebpageBubbleContentNode
+        }
+
+        return result as? ChatMessageWebpageBubbleContentNode
+    }
 
     override func animateInsertion(_ currentTimestamp: Double, duration: Double, short: Bool) {
         super.animateInsertion(currentTimestamp, duration: duration, short: short)
