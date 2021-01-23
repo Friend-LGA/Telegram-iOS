@@ -541,7 +541,7 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
         }
         
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 1.0
+        paragraphStyle.lineSpacing = 0.0
         paragraphStyle.lineHeightMultiple = 1.0
         paragraphStyle.paragraphSpacing = 1.0
         paragraphStyle.maximumLineHeight = 20.0
