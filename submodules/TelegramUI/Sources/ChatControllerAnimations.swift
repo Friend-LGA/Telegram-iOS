@@ -16,10 +16,11 @@ fileprivate extension CGRect {
 
 fileprivate struct Config {
     let animationDuration: Double = 5.0
-    let textInputNodeConvertedFrame: CGRect
+    let textInputNode: (convertedFrame: CGRect, contentOffset: CGPoint, insets: UIEdgeInsets)
     let animatingNode: (originalFrame: CGRect, convertedFrame: CGRect, originalSubnodeIndex: Int)
     let animatingBackgroundNodeOriginalFrame: CGRect
     let animatingContentNodeOriginalFrame: CGRect
+    let animatingTextNode: (originalFrame: CGRect, insets: UIEdgeInsets)
     let animatingStatusNode: (originalFrame: CGRect, originalAlpha: CGFloat)
     let textInputStyle: (fillColor: UIColor, strokeColor: UIColor, minimalInputHeight: CGFloat)
     let bubbleStyle: (fillColor: UIColor, strokeColor: UIColor, minCornerRadius: CGFloat, maxCornerRadius: CGFloat, neighborsDirection: MessageBubbleImageNeighbors)
@@ -30,15 +31,24 @@ fileprivate struct Config {
          animatingNode: ASDisplayNode,
          animatingNodeSupernode: ASDisplayNode,
          animatingBackgroundNode: ChatMessageBackground,
-         animatingContentNode: ASDisplayNode,
+         animatingContentNode: ChatMessageTextBubbleContentNode,
+         animatingTextNode: ASDisplayNode,
          animatingStatusNode: ASDisplayNode) {
         // ASDisplayNode.convert() is giving wrong values, using UIView.convert() instead
-        self.textInputNodeConvertedFrame = chatControllerNode.textInputLastFrame ?? textInputNode.view.convert(textInputNode.view.bounds, to: chatControllerNode.view)
+        self.textInputNode = (convertedFrame: chatControllerNode.textInputLastFrame ?? textInputNode.view.convert(textInputNode.view.bounds, to: chatControllerNode.view),
+                              contentOffset: chatControllerNode.textInputLastContentOffset ?? CGPoint.zero,
+                              insets: inputPanelNode.textInputNode?.textContainerInset ?? UIEdgeInsets.zero)
+        
         self.animatingNode = (originalFrame: animatingNode.frame,
                               convertedFrame: animatingNode.view.convert(animatingNode.view.bounds, to: chatControllerNode.view),
                               originalSubnodeIndex: animatingNodeSupernode.subnodes!.firstIndex(of: animatingNode)!)
+        
         self.animatingBackgroundNodeOriginalFrame = animatingBackgroundNode.frame
         self.animatingContentNodeOriginalFrame = animatingContentNode.frame
+        
+        self.animatingTextNode = (originalFrame: animatingTextNode.frame,
+                                  insets: animatingContentNode.textNodeInsets)
+            
         self.animatingStatusNode = (originalFrame: animatingStatusNode.frame,
                                     originalAlpha: animatingStatusNode.alpha)
         
@@ -103,8 +113,8 @@ fileprivate func generateTailImage(_ config: Config) -> UIImage {
 
 fileprivate func generateTextInputBackgroundPath(_ config: Config) -> UIBezierPath {
     let path = UIBezierPath()
-    let layerWidth = config.textInputNodeConvertedFrame.width
-    let layerHeight = config.textInputNodeConvertedFrame.height
+    let layerWidth = config.textInputNode.convertedFrame.width
+    let layerHeight = config.textInputNode.convertedFrame.height
     let radius: CGFloat = min(config.textInputStyle.minimalInputHeight / 2.0, layerHeight / 2.0)
     
     // Points in corners to draw arcs around
@@ -254,7 +264,9 @@ struct ChatControllerAnimations {
             let animatingNodeSupernode = animatingNode.supernode!
             let animatingBackgroundNode = node.backgroundNode
             let animatingContentNode = node.chatMessageTextBubbleContentNode!
+            let animatingTextNode = animatingContentNode.textNode
             let animatingStatusNode = animatingContentNode.statusNode
+            
             let config = Config(chatControllerNode: chatControllerNode,
                                 inputPanelNode: inputPanelNode,
                                 textInputNode: textInputNode,
@@ -262,6 +274,7 @@ struct ChatControllerAnimations {
                                 animatingNodeSupernode: animatingNodeSupernode,
                                 animatingBackgroundNode: animatingBackgroundNode,
                                 animatingContentNode: animatingContentNode,
+                                animatingTextNode: animatingTextNode,
                                 animatingStatusNode: animatingStatusNode)
             
             // Remove node content view from list view.
@@ -270,11 +283,17 @@ struct ChatControllerAnimations {
             animatingNode.removeFromSupernode()
             chatControllerNode.insertSubnode(animatingNode, aboveSubnode: chatControllerNode.inputContextPanelContainer)
             
-            animatingNode.frame = config.textInputNodeConvertedFrame
-            animatingBackgroundNode.frame = config.textInputNodeConvertedFrame.toBounds()
+            animatingNode.frame = config.textInputNode.convertedFrame
+            animatingBackgroundNode.frame = config.textInputNode.convertedFrame.toBounds()
             
-            animatingContentNode.frame = config.textInputNodeConvertedFrame.toBounds()
+            animatingContentNode.frame = config.textInputNode.convertedFrame.toBounds()
             animatingContentNode.clipsToBounds = true
+            
+            // Actually we should calculate difference in insets here to match content,
+            // but apparently it is working fine without it. Needs to be investigated.
+            // let insetsOffsetY = config.animatingTextNode.insets.top - config.inputTextNode.insets.top
+            let insetsOffsetY: CGFloat = 0
+            animatingTextNode.frame = animatingTextNode.frame.offsetBy(dx: CGFloat.zero, dy: -config.textInputNode.contentOffset.y + insetsOffsetY)
             
             let animatingStatusNodeFrameOffsetX = config.animatingContentNodeOriginalFrame.width - config.animatingStatusNode.originalFrame.maxX
             let animatingStatusNodeFrameOffsetY = config.animatingContentNodeOriginalFrame.height - config.animatingStatusNode.originalFrame.maxY
@@ -282,9 +301,7 @@ struct ChatControllerAnimations {
                                                                y: animatingContentNode.bounds.height - animatingStatusNodeFrameOffsetY - config.animatingStatusNode.originalFrame.size.height),
                                                size: config.animatingStatusNode.originalFrame.size)
             animatingStatusNode.alpha = CGFloat.zero
-            
-            // animatingContentNode SHOULD CLIP TO BOUNDS AND OFFSET BY TOP SCROLL IN TEXT VIEW
-            
+                        
             // Create sublayer with tail image.
             // Actualy here are 3 ways it can be improved:
             // 1. Draw tail as a part of the background bubble path, so it's transformation could be animated
@@ -318,6 +335,7 @@ struct ChatControllerAnimations {
                     return
                 }
                 backgroundShapeLayer.removeFromSuperlayer()
+                tailLayer.removeFromSuperlayer()
                 sAnimatingNode.removeFromSupernode()
                 sAnimatingNodeSupernode.insertSubnode(sAnimatingNode, at: config.animatingNode.originalSubnodeIndex)
                 sAnimatingNode.frame = config.animatingNode.originalFrame
@@ -395,6 +413,12 @@ struct ChatControllerAnimations {
                 ]
                 animatingContentNode.frame = config.animatingContentNodeOriginalFrame
                 addAnimations(animatingContentNode.layer, animations, config.animationDuration)
+            }
+            
+            do { // animatingTextNode
+                let repositionAnimation = setupRepositionAnimation(animatingTextNode.layer, config.animatingTextNode.originalFrame.position, config.animationDuration)
+                animatingTextNode.frame = config.animatingTextNode.originalFrame
+                animatingTextNode.layer.add(repositionAnimation, forKey: "animation")
             }
             
             do { // animatingStatusNode

@@ -37,7 +37,7 @@ private final class CachedChatMessageText {
 }
 
 class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
-    private let textNode: TextNode
+    public let textNode: TextNode
     private let textAccessibilityOverlayNode: TextAccessibilityOverlayNode
     public let statusNode: ChatMessageDateAndStatusNode
     private var linkHighlightingNode: LinkHighlightingNode?
@@ -46,6 +46,8 @@ class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
     private var textHighlightingNodes: [LinkHighlightingNode] = []
     
     private var cachedChatMessageText: CachedChatMessageText?
+    
+    public let textNodeInsets = UIEdgeInsets(top: 2.0, left: 2.0, bottom: 5.0, right: 2.0)
     
     required init() {
         self.textNode = TextNode()
@@ -84,6 +86,7 @@ class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         let statusLayout = self.statusNode.asyncLayout()
         
         let currentCachedChatMessageText = self.cachedChatMessageText
+        let textInsets = self.textNodeInsets
         
         return { item, layoutConstants, _, _, _ in
             let contentProperties = ChatMessageBubbleContentProperties(hidesSimpleAuthorHeader: false, headerSpacing: 0.0, hidesBackground: .never, forceFullCorners: false, forceAlignment: .none)
@@ -285,8 +288,6 @@ class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 if let statusSize = statusSize, !forceStatusNewline {
                     cutout = TextNodeCutout(bottomRight: statusSize)
                 }
-                
-                let textInsets = UIEdgeInsets(top: 2.0, left: 2.0, bottom: 5.0, right: 2.0)
                 
                 let (textLayout, textApply) = textLayout(TextNodeLayoutArguments(attributedString: attributedText, backgroundColor: nil, maximumNumberOfLines: 0, truncationType: .end, constrainedSize: textConstrainedSize, alignment: .natural, cutout: cutout, insets: textInsets, lineColor: messageTheme.accentControlColor))
                 
