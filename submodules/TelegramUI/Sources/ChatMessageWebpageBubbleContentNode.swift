@@ -19,7 +19,7 @@ private let titleFont: UIFont = Font.semibold(15.0)
 final class ChatMessageWebpageBubbleContentNode: ChatMessageBubbleContentNode {
     private var webPage: TelegramMediaWebpage?
     
-    private let contentNode: ChatMessageAttachedContentNode
+    public let contentNode: ChatMessageAttachedContentNode
     
     override var visibility: ListViewItemNodeVisibility {
         didSet {

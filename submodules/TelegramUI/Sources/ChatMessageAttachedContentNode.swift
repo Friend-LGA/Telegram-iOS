@@ -225,7 +225,7 @@ final class ChatMessageAttachedContentNode: ASDisplayNode {
     private var contentFileNode: ChatMessageInteractiveFileNode?
     private var buttonNode: ChatMessageAttachedContentButtonNode?
     
-    private let statusNode: ChatMessageDateAndStatusNode
+    public let statusNode: ChatMessageDateAndStatusNode
     private var additionalImageBadgeNode: ChatMessageInteractiveMediaBadge?
     private var linkHighlightingNode: LinkHighlightingNode?
     
