@@ -4197,11 +4197,19 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                             insertItems.append(ListViewInsertItem(index: item.index, previousIndex: item.previousIndex, item: item.item, directionHint: item.directionHint == .Down ? .Up : nil))
                         }
                         
+                        var animationCallback: ChatHistoryListViewTransition.AnimationCallback?
+                        if case .InteractiveChanges = transition.reason, !transition.insertItems.isEmpty {
+                            options.remove(.AnimateAlpha)
+                            options.remove(.RequestItemInsertionAnimations)
+                            animationCallback = ChatControllerAnimations.getAnimationCallback(chatControllerNode: strongSelf.chatDisplayNode)
+                        }
+                        
                         var scrollToItem: ListViewScrollToItem?
                         if isScheduledMessages, let insertedIndex = insertedIndex {
                             scrollToItem = ListViewScrollToItem(index: insertedIndex, position: .visible, animated: true, curve: .Default(duration: 0.2), directionHint: .Down)
                         } else if transition.historyView.originalView.laterId == nil {
-                            scrollToItem = ListViewScrollToItem(index: 0, position: .top(0.0), animated: true, curve: .Default(duration: 0.2), directionHint: .Up)
+                            let animationCurve: ListViewAnimationCurve = animationCallback != nil ? .Spring(duration: 0.5) : .Default(duration: 0.2)
+                            scrollToItem = ListViewScrollToItem(index: 0, position: .top(0.0), animated: true, curve: animationCurve, directionHint: .Up)
                         }
                         
                         var stationaryItemRange: (Int, Int)?
@@ -4209,13 +4217,6 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                             stationaryItemRange = (maxInsertedItem + 1, Int.max)
                         }
                         
-                        var animationCallback: ChatHistoryListViewTransition.AnimationCallback? = nil
-                        if case .InteractiveChanges = transition.reason, !transition.insertItems.isEmpty {
-                            options.remove(.AnimateAlpha)
-                            options.remove(.RequestItemInsertionAnimations)
-                            animationCallback = ChatControllerAnimations.getAnimationCallback(chatControllerNode: strongSelf.chatDisplayNode)
-                        }
-
                         mappedTransition = (ChatHistoryListViewTransition(historyView: transition.historyView, deleteItems: deleteItems, insertItems: insertItems, updateItems: transition.updateItems, options: options, scrollToItem: scrollToItem, stationaryItemRange: stationaryItemRange, initialData: transition.initialData, keyboardButtonsMessage: transition.keyboardButtonsMessage, cachedData: transition.cachedData, cachedDataMessages: transition.cachedDataMessages, readStateData: transition.readStateData, scrolledToIndex: transition.scrolledToIndex, scrolledToSomeIndex: transition.scrolledToSomeIndex, peerType: transition.peerType, networkType: transition.networkType, animateIn: false, reason: transition.reason, flashIndicators: transition.flashIndicators, animationCallback: animationCallback), updateSizeAndInsets)
                     })
                     

@@ -14,8 +14,10 @@ fileprivate extension CGRect {
     }
 }
 
+fileprivate let animationDuration: Double = 0.5
+fileprivate let animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
 fileprivate struct Config {
-    let animationDuration: Double = 5.0
     let inputTextContainerNode: (convertedFrame: CGRect, contentOffset: CGPoint, insets: UIEdgeInsets)
     let chatMessageMainContainerNode: (originalFrame: CGRect, convertedFrame: CGRect, originalSubnodeIndex: Int, originalClipsToBounds: Bool)
     let chatMessageMainContextNodeOriginalFrame: CGRect
@@ -252,6 +254,7 @@ fileprivate func setupResizeAnimation(_ layer: CALayer, _ size: CGSize, _ durati
     animation.fromValue = layer.bounds
     animation.toValue = [CGFloat.zero, CGFloat.zero, size.width, size.height]
     animation.duration = duration
+    animation.timingFunction = animationTimingFunction
     return animation
 }
 
@@ -260,6 +263,7 @@ fileprivate func setupRepositionAnimation(_ layer: CALayer, _ position: CGPoint,
     animation.fromValue = layer.position
     animation.toValue = [position.x, position.y]
     animation.duration = duration
+    animation.timingFunction = animationTimingFunction
     return animation
 }
 
@@ -487,38 +491,38 @@ struct ChatControllerAnimations {
             
             do { // chatMessageMainContainerNode
                 let animations = [
-                    setupResizeAnimation(chatMessageMainContainerNode.layer, config.chatMessageMainContainerNode.convertedFrame.size, config.animationDuration),
-                    setupRepositionAnimation(chatMessageMainContainerNode.layer, config.chatMessageMainContainerNode.convertedFrame.position, config.animationDuration)
+                    setupResizeAnimation(chatMessageMainContainerNode.layer, config.chatMessageMainContainerNode.convertedFrame.size, animationDuration),
+                    setupRepositionAnimation(chatMessageMainContainerNode.layer, config.chatMessageMainContainerNode.convertedFrame.position, animationDuration)
                 ]
                 chatMessageMainContainerNode.frame = config.chatMessageMainContainerNode.convertedFrame
-                addAnimations(chatMessageMainContainerNode.layer, animations, config.animationDuration)
+                addAnimations(chatMessageMainContainerNode.layer, animations, animationDuration)
             }
             
             do { // chatMessageMainContextNode
                 let animations = [
-                    setupResizeAnimation(chatMessageMainContextNode.layer, config.chatMessageMainContextNodeOriginalFrame.size, config.animationDuration),
-                    setupRepositionAnimation(chatMessageMainContextNode.layer, config.chatMessageMainContextNodeOriginalFrame.position, config.animationDuration)
+                    setupResizeAnimation(chatMessageMainContextNode.layer, config.chatMessageMainContextNodeOriginalFrame.size, animationDuration),
+                    setupRepositionAnimation(chatMessageMainContextNode.layer, config.chatMessageMainContextNodeOriginalFrame.position, animationDuration)
                 ]
                 chatMessageMainContextNode.frame = config.chatMessageMainContextNodeOriginalFrame
-                addAnimations(chatMessageMainContextNode.layer, animations, config.animationDuration)
+                addAnimations(chatMessageMainContextNode.layer, animations, animationDuration)
             }
             
             do { // chatMessageMainContextContentNode
                 let animations = [
-                    setupResizeAnimation(chatMessageMainContextContentNode.layer, config.chatMessageMainContextContentNodeOriginalFrame.size, config.animationDuration),
-                    setupRepositionAnimation(chatMessageMainContextContentNode.layer, config.chatMessageMainContextContentNodeOriginalFrame.position, config.animationDuration)
+                    setupResizeAnimation(chatMessageMainContextContentNode.layer, config.chatMessageMainContextContentNodeOriginalFrame.size, animationDuration),
+                    setupRepositionAnimation(chatMessageMainContextContentNode.layer, config.chatMessageMainContextContentNodeOriginalFrame.position, animationDuration)
                 ]
                 chatMessageMainContextContentNode.frame = config.chatMessageMainContextContentNodeOriginalFrame
-                addAnimations(chatMessageMainContextContentNode.layer, animations, config.animationDuration)
+                addAnimations(chatMessageMainContextContentNode.layer, animations, animationDuration)
             }
             
             do { // chatMessageBackgroundNode
                 let animations = [
-                    setupResizeAnimation(chatMessageBackgroundNode.layer, config.chatMessageBackgroundNode.originalFrame.size, config.animationDuration),
-                    setupRepositionAnimation(chatMessageBackgroundNode.layer, config.chatMessageBackgroundNode.originalFrame.position, config.animationDuration)
+                    setupResizeAnimation(chatMessageBackgroundNode.layer, config.chatMessageBackgroundNode.originalFrame.size, animationDuration),
+                    setupRepositionAnimation(chatMessageBackgroundNode.layer, config.chatMessageBackgroundNode.originalFrame.position, animationDuration)
                 ]
                 chatMessageBackgroundNode.frame = config.chatMessageBackgroundNode.originalFrame
-                addAnimations(chatMessageBackgroundNode.layer, animations, config.animationDuration)
+                addAnimations(chatMessageBackgroundNode.layer, animations, animationDuration)
             }
             
             let newBackgroundPath = generateBubbleBackgroundPath(config, config.chatMessageBackgroundNode.originalFrame.size)
@@ -527,48 +531,52 @@ struct ChatControllerAnimations {
                 let redrawPathAnimation = CABasicAnimation(keyPath: "path")
                 redrawPathAnimation.fromValue = maskShapeLayer.path
                 redrawPathAnimation.toValue = newBackgroundPath.cgPath
-                redrawPathAnimation.duration = config.animationDuration
+                redrawPathAnimation.duration = animationDuration
+                redrawPathAnimation.timingFunction = animationTimingFunction
                 maskShapeLayer.path = newBackgroundPath.cgPath
                 
                 let animations = [
-                    setupResizeAnimation(maskShapeLayer, config.chatMessageBackgroundNode.originalFrame.size, config.animationDuration),
-                    setupRepositionAnimation(maskShapeLayer, config.chatMessageBackgroundNode.originalFrame.position, config.animationDuration),
+                    setupResizeAnimation(maskShapeLayer, config.chatMessageBackgroundNode.originalFrame.size, animationDuration),
+                    setupRepositionAnimation(maskShapeLayer, config.chatMessageBackgroundNode.originalFrame.position, animationDuration),
                     redrawPathAnimation
                 ]
                 maskShapeLayer.frame = config.chatMessageBackgroundNode.originalFrame
-                addAnimations(maskShapeLayer, animations, config.animationDuration)
+                addAnimations(maskShapeLayer, animations, animationDuration)
             }
             
             do { // backgroundShapeLayer
                 let redrawPathAnimation = CABasicAnimation(keyPath: "path")
                 redrawPathAnimation.fromValue = backgroundShapeLayer.path
                 redrawPathAnimation.toValue = newBackgroundPath.cgPath
-                redrawPathAnimation.duration = config.animationDuration
+                redrawPathAnimation.duration = animationDuration
+                redrawPathAnimation.timingFunction = animationTimingFunction
                 backgroundShapeLayer.path = newBackgroundPath.cgPath
 
                 let newStrokeColor = UIColor.clear.cgColor // chatMessageBackgroundNode.chatMessageBackgroundStrokeColor.cgColor
                 let redrawStrokeAnimation = CABasicAnimation(keyPath: "strokeColor")
                 redrawStrokeAnimation.fromValue = backgroundShapeLayer.strokeColor
                 redrawStrokeAnimation.toValue = newStrokeColor
-                redrawStrokeAnimation.duration = config.animationDuration
+                redrawStrokeAnimation.duration = animationDuration
+                redrawStrokeAnimation.timingFunction = animationTimingFunction
                 backgroundShapeLayer.strokeColor = newStrokeColor
 
                 let newFillColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor.cgColor
                 let redrawFillAnimation = CABasicAnimation(keyPath: "fillColor")
                 redrawFillAnimation.fromValue = backgroundShapeLayer.fillColor
                 redrawFillAnimation.toValue = newFillColor
-                redrawFillAnimation.duration = config.animationDuration
+                redrawFillAnimation.duration = animationDuration
+                redrawFillAnimation.timingFunction = animationTimingFunction
                 backgroundShapeLayer.fillColor = newFillColor
 
                 let animations = [
-                    setupResizeAnimation(backgroundShapeLayer, config.chatMessageBackgroundNode.originalFrame.size, config.animationDuration),
-                    setupRepositionAnimation(backgroundShapeLayer, config.chatMessageBackgroundNode.originalFrame.position, config.animationDuration),
+                    setupResizeAnimation(backgroundShapeLayer, config.chatMessageBackgroundNode.originalFrame.size, animationDuration),
+                    setupRepositionAnimation(backgroundShapeLayer, config.chatMessageBackgroundNode.originalFrame.position, animationDuration),
                     redrawPathAnimation,
                     redrawStrokeAnimation,
                     redrawFillAnimation
                 ]
                 backgroundShapeLayer.frame = config.chatMessageBackgroundNode.originalFrame
-                addAnimations(backgroundShapeLayer, animations, config.animationDuration)
+                addAnimations(backgroundShapeLayer, animations, animationDuration)
             }
 
             do { // tailShapeLayer
@@ -576,80 +584,82 @@ struct ChatControllerAnimations {
                                                    y: config.chatMessageMainContextNodeOriginalFrame.height - config.chatMessageBackgroundNode.offset.y - config.chatMessageBackgroundNode.originalFrame.height),
                                          size: config.chatMessageBackgroundNode.originalFrame.size)
                 
-                let repositionAnimation = setupRepositionAnimation(tailLayer, newFrame.position, config.animationDuration)
+                let repositionAnimation = setupRepositionAnimation(tailLayer, newFrame.position, animationDuration)
                 tailLayer.frame = newFrame
 
                 let newOpacity: Float = 1.0
                 let showAnimation = CABasicAnimation(keyPath: "opacity")
                 showAnimation.fromValue = tailLayer.opacity
                 showAnimation.toValue = newOpacity
-                showAnimation.duration = config.animationDuration
+                showAnimation.duration = animationDuration
+                showAnimation.timingFunction = animationTimingFunction
                 tailLayer.opacity = newOpacity
 
                 let animations = [repositionAnimation, showAnimation]
-                addAnimations(tailLayer, animations, config.animationDuration)
+                addAnimations(tailLayer, animations, animationDuration)
             }
             
             do { // chatMessageTextContentNode
                 let animations = [
-                    setupResizeAnimation(chatMessageTextContentNode.layer, config.chatMessageTextContentNodeOriginalFrame.size, config.animationDuration),
-                    setupRepositionAnimation(chatMessageTextContentNode.layer, config.chatMessageTextContentNodeOriginalFrame.position, config.animationDuration)
+                    setupResizeAnimation(chatMessageTextContentNode.layer, config.chatMessageTextContentNodeOriginalFrame.size, animationDuration),
+                    setupRepositionAnimation(chatMessageTextContentNode.layer, config.chatMessageTextContentNodeOriginalFrame.position, animationDuration)
                 ]
                 chatMessageTextContentNode.frame = config.chatMessageTextContentNodeOriginalFrame
-                addAnimations(chatMessageTextContentNode.layer, animations, config.animationDuration)
+                addAnimations(chatMessageTextContentNode.layer, animations, animationDuration)
             }
             
             do { // chatMessageTextNode
-                let repositionAnimation = setupRepositionAnimation(chatMessageTextNode.layer, config.chatMessageTextNode.originalFrame.position, config.animationDuration)
+                let repositionAnimation = setupRepositionAnimation(chatMessageTextNode.layer, config.chatMessageTextNode.originalFrame.position, animationDuration)
                 chatMessageTextNode.frame = config.chatMessageTextNode.originalFrame
                 chatMessageTextNode.layer.add(repositionAnimation, forKey: "animation")
             }
             
             do { // chatMessageStatusNode
-                let repositionAnimation = setupRepositionAnimation(chatMessageStatusNode.layer, config.chatMessageStatusNode.originalFrame.position, config.animationDuration)
+                let repositionAnimation = setupRepositionAnimation(chatMessageStatusNode.layer, config.chatMessageStatusNode.originalFrame.position, animationDuration)
                 chatMessageStatusNode.frame = config.chatMessageStatusNode.originalFrame
                 
                 let showAnimation = CABasicAnimation(keyPath: "opacity")
                 showAnimation.fromValue = chatMessageStatusNode.layer.opacity
                 showAnimation.toValue = config.chatMessageStatusNode.originalAlpha
-                showAnimation.duration = config.animationDuration
+                showAnimation.duration = animationDuration
+                showAnimation.timingFunction = animationTimingFunction
                 chatMessageStatusNode.alpha = config.chatMessageStatusNode.originalAlpha
                 
                 let animations = [repositionAnimation, showAnimation]
-                addAnimations(chatMessageStatusNode.layer, animations, config.animationDuration)
+                addAnimations(chatMessageStatusNode.layer, animations, animationDuration)
             }
             
             // chatMessageWebpageContentNode
             if let chatMessageWebpageContentNode = chatMessageWebpageContentNode,
                let originalFrame = config.chatMessageWebpageContentNodeOriginalFrame {
                 let animations = [
-                    setupResizeAnimation(chatMessageWebpageContentNode.layer, originalFrame.size, config.animationDuration),
-                    setupRepositionAnimation(chatMessageWebpageContentNode.layer, originalFrame.position, config.animationDuration)
+                    setupResizeAnimation(chatMessageWebpageContentNode.layer, originalFrame.size, animationDuration),
+                    setupRepositionAnimation(chatMessageWebpageContentNode.layer, originalFrame.position, animationDuration)
                 ]
                 chatMessageWebpageContentNode.frame = originalFrame
-                addAnimations(chatMessageWebpageContentNode.layer, animations, config.animationDuration)
+                addAnimations(chatMessageWebpageContentNode.layer, animations, animationDuration)
             }
             
             // chatMessageReplyInfoNode
             if let chatMessageReplyInfoNode = chatMessageReplyInfoNode,
                let originalFrame = config.chatMessageReplyInfoNodeOriginalFrame {
                 let animations = [
-                    setupResizeAnimation(chatMessageReplyInfoNode.layer, originalFrame.size, config.animationDuration),
-                    setupRepositionAnimation(chatMessageReplyInfoNode.layer, originalFrame.position, config.animationDuration)
+                    setupResizeAnimation(chatMessageReplyInfoNode.layer, originalFrame.size, animationDuration),
+                    setupRepositionAnimation(chatMessageReplyInfoNode.layer, originalFrame.position, animationDuration)
                 ]
                 chatMessageReplyInfoNode.frame = originalFrame
-                addAnimations(chatMessageReplyInfoNode.layer, animations, config.animationDuration)
+                addAnimations(chatMessageReplyInfoNode.layer, animations, animationDuration)
             }
             
             // chatMessageForwardInfoNode
             if let chatMessageForwardInfoNode = chatMessageForwardInfoNode,
                let originalFrame = config.chatMessageForwardInfoNodeOriginalFrame {
                 let animations = [
-                    setupResizeAnimation(chatMessageForwardInfoNode.layer, originalFrame.size, config.animationDuration),
-                    setupRepositionAnimation(chatMessageForwardInfoNode.layer, originalFrame.position, config.animationDuration)
+                    setupResizeAnimation(chatMessageForwardInfoNode.layer, originalFrame.size, animationDuration),
+                    setupRepositionAnimation(chatMessageForwardInfoNode.layer, originalFrame.position, animationDuration)
                 ]
                 chatMessageForwardInfoNode.frame = originalFrame
-                addAnimations(chatMessageForwardInfoNode.layer, animations, config.animationDuration)
+                addAnimations(chatMessageForwardInfoNode.layer, animations, animationDuration)
             }
             
             CATransaction.commit()
