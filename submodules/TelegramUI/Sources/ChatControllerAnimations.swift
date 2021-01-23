@@ -23,6 +23,8 @@ fileprivate struct Config {
     let animatingTextNode: (originalFrame: CGRect, insets: UIEdgeInsets)
     let animatingStatusNode: (originalFrame: CGRect, originalAlpha: CGFloat)
     let animatingWebpageContentNodeOriginalFrame: CGRect?
+    let replyInfoNodeOriginalFrame: CGRect?
+    let forwardInfoNodeOriginalFrame: CGRect?
     let textInputStyle: (fillColor: UIColor, strokeColor: UIColor, minimalInputHeight: CGFloat)
     let bubbleStyle: (fillColor: UIColor, strokeColor: UIColor, minCornerRadius: CGFloat, maxCornerRadius: CGFloat, neighborsDirection: MessageBubbleImageNeighbors)
     
@@ -35,7 +37,9 @@ fileprivate struct Config {
          animatingTextContentNode: ChatMessageTextBubbleContentNode,
          animatingTextNode: ASDisplayNode,
          animatingStatusNode: ASDisplayNode,
-         animatingWebpageContentNode: ChatMessageWebpageBubbleContentNode? = nil) {
+         animatingWebpageContentNode: ASDisplayNode? = nil,
+         replyInfoNode: ASDisplayNode? = nil,
+         forwardInfoNode: ASDisplayNode? = nil) {
         // ASDisplayNode.convert() is giving wrong values, using UIView.convert() instead
         self.textInputNode = (convertedFrame: chatControllerNode.textInputLastFrame ?? textInputNode.view.convert(textInputNode.view.bounds, to: chatControllerNode.view),
                               contentOffset: chatControllerNode.textInputLastContentOffset ?? CGPoint.zero,
@@ -55,6 +59,8 @@ fileprivate struct Config {
                                     originalAlpha: animatingStatusNode.alpha)
         
         self.animatingWebpageContentNodeOriginalFrame = animatingWebpageContentNode?.frame
+        self.replyInfoNodeOriginalFrame = replyInfoNode?.frame
+        self.forwardInfoNodeOriginalFrame = forwardInfoNode?.frame
         
         self.textInputStyle = (fillColor: inputPanelNode.inputBackgroundColor(),
                                strokeColor: inputPanelNode.inputStrokeColor(),
@@ -273,6 +279,8 @@ struct ChatControllerAnimations {
             let animatingStatusNode = animatingTextContentNode.statusNode
             
             let animatingWebpageContentNode: ChatMessageWebpageBubbleContentNode? = node.chatMessageWebpageBubbleContentNode
+            let replyInfoNode: ChatMessageReplyInfoNode? = node.replyInfoNode
+            let forwardInfoNode: ChatMessageForwardInfoNode? = node.forwardInfoNode
             
             let config = Config(chatControllerNode: chatControllerNode,
                                 inputPanelNode: inputPanelNode,
@@ -283,7 +291,9 @@ struct ChatControllerAnimations {
                                 animatingTextContentNode: animatingTextContentNode,
                                 animatingTextNode: animatingTextNode,
                                 animatingStatusNode: animatingStatusNode,
-                                animatingWebpageContentNode: animatingWebpageContentNode)
+                                animatingWebpageContentNode: animatingWebpageContentNode,
+                                replyInfoNode: replyInfoNode,
+                                forwardInfoNode: forwardInfoNode)
             
             // Remove node content view from list view.
             // Move it above input panel, but below navigation bar
@@ -307,7 +317,7 @@ struct ChatControllerAnimations {
             let animatingStatusNodeFrameOffsetY = config.animatingTextContentNodeOriginalFrame.height - config.animatingStatusNode.originalFrame.maxY
             animatingStatusNode.frame = CGRect(origin: CGPoint(x: animatingTextContentNode.bounds.width - animatingStatusNodeFrameOffsetX - config.animatingStatusNode.originalFrame.size.width,
                                                                y: animatingTextContentNode.bounds.height - animatingStatusNodeFrameOffsetY - config.animatingStatusNode.originalFrame.size.height),
-                                               size: animatingStatusNode.frame.size)
+                                               size: animatingStatusNode.bounds.size)
             animatingStatusNode.alpha = CGFloat.zero
             
             if let animatingWebpageContentNode = animatingWebpageContentNode,
@@ -315,7 +325,21 @@ struct ChatControllerAnimations {
                 animatingWebpageContentNode.frame = CGRect(origin: CGPoint(x: 0.0, y: originalFrame.minY),
                                                            size: config.textInputNode.convertedFrame.size)
             }
-                        
+            
+            if let replyInfoNode = replyInfoNode,
+               let originalFrame = config.replyInfoNodeOriginalFrame {
+                let replyInfoNodeFrameOffsetY = config.animatingTextContentNodeOriginalFrame.minY - originalFrame.minY
+                replyInfoNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -replyInfoNodeFrameOffsetY),
+                                             size: replyInfoNode.bounds.size)
+            }
+            
+            if let forwardInfoNode = forwardInfoNode,
+               let originalFrame = config.forwardInfoNodeOriginalFrame {
+                let forwardInfoNodeFrameOffsetY = config.animatingTextContentNodeOriginalFrame.minY - originalFrame.minY
+                forwardInfoNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -forwardInfoNodeFrameOffsetY),
+                                             size: forwardInfoNode.bounds.size)
+            }
+                                    
             // Create sublayer with tail image.
             // Actualy here are 3 ways it can be improved:
             // 1. Draw tail as a part of the background bubble path, so it's transformation could be animated
@@ -339,23 +363,37 @@ struct ChatControllerAnimations {
             // Preparation is done, it's time to do animations!
             CATransaction.begin()
             CATransaction.setCompletionBlock { [weak wAnimatingNode = animatingNode,
+                                                weak wAnimatingNodeSupernode = animatingNodeSupernode,
                                                 weak wAnimatingBackgroundNode = animatingBackgroundNode,
-                                                weak wAnimatingContentNode = animatingTextContentNode,
-                                                weak wAnimatingNodeSupernode = animatingNodeSupernode] in
-                guard let sAnimatingNode = wAnimatingNode,
-                      let sAnimatingBackgroundNode = wAnimatingBackgroundNode,
-                      let sAnimatingContentNode = wAnimatingContentNode,
-                      let sAnimatingNodeSupernode = wAnimatingNodeSupernode else {
-                    return
+                                                weak wAnimatingTextContentNode = animatingTextContentNode,
+                                                weak wAnimatingWebpageContentNode = animatingWebpageContentNode,
+                                                weak wReplyInfoNode = replyInfoNode,
+                                                weak wForwardInfoNode = forwardInfoNode] in
+                if let sAnimatingNode = wAnimatingNode {
+                    sAnimatingNode.removeFromSupernode()
+                    if let sAnimatingNodeSupernode = wAnimatingNodeSupernode {
+                        sAnimatingNodeSupernode.insertSubnode(sAnimatingNode, at: config.animatingNode.originalSubnodeIndex)
+                    }
+                    sAnimatingNode.frame = config.animatingNode.originalFrame
                 }
-                backgroundShapeLayer.removeFromSuperlayer()
-                tailLayer.removeFromSuperlayer()
-                sAnimatingNode.removeFromSupernode()
-                sAnimatingNodeSupernode.insertSubnode(sAnimatingNode, at: config.animatingNode.originalSubnodeIndex)
-                sAnimatingNode.frame = config.animatingNode.originalFrame
-                sAnimatingBackgroundNode.frame = config.animatingBackgroundNodeOriginalFrame
-                sAnimatingContentNode.frame = config.animatingTextContentNodeOriginalFrame
-                sAnimatingBackgroundNode.showImages()
+                if let sAnimatingBackgroundNode = wAnimatingBackgroundNode {
+                    sAnimatingBackgroundNode.frame = config.animatingBackgroundNodeOriginalFrame
+                    backgroundShapeLayer.removeFromSuperlayer()
+                    tailLayer.removeFromSuperlayer()
+                    sAnimatingBackgroundNode.showImages()
+                }
+                if let sAnimatingTextContentNode = wAnimatingTextContentNode {
+                    sAnimatingTextContentNode.frame = config.animatingTextContentNodeOriginalFrame
+                }
+                if let sAnimatingWebpageContentNode = wAnimatingWebpageContentNode, let originalFrame = config.animatingWebpageContentNodeOriginalFrame {
+                    sAnimatingWebpageContentNode.frame = originalFrame
+                }
+                if let sReplyInfoNode = wReplyInfoNode, let originalFrame = config.replyInfoNodeOriginalFrame {
+                    sReplyInfoNode.frame = originalFrame
+                }
+                if let sForwardInfoNode = wForwardInfoNode, let originalFrame = config.forwardInfoNodeOriginalFrame {
+                    sForwardInfoNode.frame = originalFrame
+                }
                 if let completion = completion {
                     completion()
                 }
@@ -458,6 +496,28 @@ struct ChatControllerAnimations {
                 ]
                 animatingWebpageContentNode.frame = originalFrame
                 addAnimations(animatingWebpageContentNode.layer, animations, config.animationDuration)
+            }
+            
+            // replyInfoNode
+            if let replyInfoNode = replyInfoNode,
+               let originalFrame = config.replyInfoNodeOriginalFrame {
+                let animations = [
+                    setupResizeAnimation(replyInfoNode.layer, originalFrame.size, config.animationDuration),
+                    setupRepositionAnimation(replyInfoNode.layer, originalFrame.position, config.animationDuration)
+                ]
+                replyInfoNode.frame = originalFrame
+                addAnimations(replyInfoNode.layer, animations, config.animationDuration)
+            }
+            
+            // forwardInfoNode
+            if let forwardInfoNode = forwardInfoNode,
+               let originalFrame = config.forwardInfoNodeOriginalFrame {
+                let animations = [
+                    setupResizeAnimation(forwardInfoNode.layer, originalFrame.size, config.animationDuration),
+                    setupRepositionAnimation(forwardInfoNode.layer, originalFrame.position, config.animationDuration)
+                ]
+                forwardInfoNode.frame = originalFrame
+                addAnimations(forwardInfoNode.layer, animations, config.animationDuration)
             }
             
             CATransaction.commit()

@@ -356,7 +356,7 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
         }
     }
 
-    private let mainContextSourceNode: ContextExtractedContentContainingNode
+    public let mainContextSourceNode: ContextExtractedContentContainingNode
     public let mainContainerNode: ContextControllerSourceNode
     private let backgroundWallpaperNode: ChatMessageBubbleBackdrop
     public let backgroundNode: ChatMessageBackground
@@ -375,11 +375,11 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
     private var nameNode: TextNode?
     private var adminBadgeNode: TextNode?
     private var credibilityIconNode: ASImageNode?
-    private var forwardInfoNode: ChatMessageForwardInfoNode?
+    public private(set) var forwardInfoNode: ChatMessageForwardInfoNode?
     var forwardInfoReferenceNode: ASDisplayNode? {
         return self.forwardInfoNode
     }
-    private var replyInfoNode: ChatMessageReplyInfoNode?
+    public private(set) var replyInfoNode: ChatMessageReplyInfoNode?
     
     private var contentContainersWrapperNode: ASDisplayNode
     private var contentContainers: [ContentContainer] = []
