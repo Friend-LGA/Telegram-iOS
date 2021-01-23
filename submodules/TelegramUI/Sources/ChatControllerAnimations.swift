@@ -334,83 +334,108 @@ struct ChatControllerAnimations {
                                 chatMessageReplyInfoNode: chatMessageReplyInfoNode,
                                 chatMessageForwardInfoNode: chatMessageForwardInfoNode)
             
-            // Remove node content view from list view.
-            // Move it above input panel, but below navigation bar
-            // Mimic text view proportions
-            chatMessageMainContainerNode.removeFromSupernode()
-            viewNode.insertSubnode(chatMessageMainContainerNode, aboveSubnode: viewNode.inputContextPanelContainer)
-            
-            chatMessageMainContainerNode.frame = config.inputTextContainerNode.convertedFrame
-            chatMessageMainContainerNode.clipsToBounds = true
-            
-            chatMessageMainContextNode.frame = config.inputTextContainerNode.convertedFrame.toBounds()
-            
-            let backgroundPath = generateTextInputBackgroundPath(config, config.inputTextContainerNode.convertedFrame.size)
-            
-            // Create sublayer which mimics input text view background and will be transformed to bubble
             let backgroundShapeLayer = CAShapeLayer()
-            backgroundShapeLayer.path = backgroundPath.cgPath
-            backgroundShapeLayer.strokeColor = config.textInputStyle.strokeColor.cgColor
-            backgroundShapeLayer.fillColor = config.textInputStyle.fillColor.cgColor
-            chatMessageMainContextNode.layer.insertSublayer(backgroundShapeLayer, at: 0)
-            
-            // Create sublayer with tail image.
-            // Actualy here are 3 ways it can be improved:
-            // 1. Draw tail as a part of the background bubble path, so it's transformation could be animated
-            // 2. Instead of UIImage draw a path
-            // 3. Have stored prepared image somewhere in "theme.chat"
             let tailLayer = CALayer()
-            tailLayer.contents = generateTailImage(config, config.chatMessageBackgroundNode.originalFrame.size).cgImage
-            tailLayer.frame = CGRect(origin: CGPoint(x: chatMessageMainContextNode.bounds.width - config.chatMessageBackgroundNode.offset.x - config.chatMessageBackgroundNode.originalFrame.width,
-                                                     y: chatMessageMainContextNode.bounds.height - config.chatMessageBackgroundNode.offset.y - config.chatMessageBackgroundNode.originalFrame.height),
-                                     size: config.chatMessageBackgroundNode.originalFrame.size)
-            tailLayer.opacity = 0.0
-            chatMessageMainContextNode.layer.insertSublayer(tailLayer, at: 0)
-            
-            chatMessageMainContextContentNode.frame = config.inputTextContainerNode.convertedFrame.toBounds()
             let maskShapeLayer = CAShapeLayer()
-            maskShapeLayer.path = backgroundPath.cgPath
-            maskShapeLayer.fillColor = UIColor.black.cgColor
-            chatMessageMainContextContentNode.layer.mask = maskShapeLayer
-            
-            chatMessageBackgroundNode.frame = config.inputTextContainerNode.convertedFrame.toBounds()
-            chatMessageBackgroundNode.isHidden = true
-            
-            chatMessageTextContentNode.frame = config.inputTextContainerNode.convertedFrame.toBounds()
-            
-            if let chatMessageWebpageContentNode = chatMessageWebpageContentNode,
-               let originalFrame = config.chatMessageWebpageContentNodeOriginalFrame {
-                chatMessageWebpageContentNode.frame = CGRect(origin: CGPoint(x: 0.0, y: originalFrame.minY),
-                                                             size: config.inputTextContainerNode.convertedFrame.size)
+            // Prepare all nodes to be places and look exactly like input text view
+            do {
+                do { // chatMessageMainContainerNode
+                    // Remove node content view from list view.
+                    // Move it above input panel, but below navigation bar
+                    chatMessageMainContainerNode.removeFromSupernode()
+                    viewNode.insertSubnode(chatMessageMainContainerNode, aboveSubnode: viewNode.inputContextPanelContainer)
+                    
+                    chatMessageMainContainerNode.frame = config.inputTextContainerNode.convertedFrame
+                    chatMessageMainContainerNode.clipsToBounds = true
+                }
+                
+                let backgroundPath = generateTextInputBackgroundPath(config, config.inputTextContainerNode.convertedFrame.size)
+                
+                do { // chatMessageMainContextNode, draws bubble background
+                    chatMessageMainContextNode.frame = config.inputTextContainerNode.convertedFrame.toBounds()
+        
+                    // Create sublayer which mimics input text view background and will be transformed to bubble
+                    backgroundShapeLayer.path = backgroundPath.cgPath
+                    backgroundShapeLayer.strokeColor = config.textInputStyle.strokeColor.cgColor
+                    backgroundShapeLayer.fillColor = config.textInputStyle.fillColor.cgColor
+                    chatMessageMainContextNode.layer.insertSublayer(backgroundShapeLayer, at: 0)
+                    
+                    // Create sublayer with tail image.
+                    // Actually here are 3 ways it can be improved:
+                    // 1. Draw tail as a part of the background bubble path, so it's transformation could be animated
+                    // 2. Instead of UIImage draw a path
+                    // 3. Have stored prepared image somewhere in "theme.chat"
+                    tailLayer.contents = generateTailImage(config, config.chatMessageBackgroundNode.originalFrame.size).cgImage
+                    tailLayer.frame = CGRect(origin: CGPoint(x: chatMessageMainContextNode.bounds.width - config.chatMessageBackgroundNode.offset.x - config.chatMessageBackgroundNode.originalFrame.width,
+                                                             y: chatMessageMainContextNode.bounds.height - config.chatMessageBackgroundNode.offset.y - config.chatMessageBackgroundNode.originalFrame.height),
+                                             size: config.chatMessageBackgroundNode.originalFrame.size)
+                    tailLayer.opacity = 0.0
+                    chatMessageMainContextNode.layer.insertSublayer(tailLayer, at: 0)
+                }
+                
+                do { // chatMessageMainContextContentNode, masks everything outside of bubble background
+                    chatMessageMainContextContentNode.frame = config.inputTextContainerNode.convertedFrame.toBounds()
+                    
+                    maskShapeLayer.path = backgroundPath.cgPath
+                    maskShapeLayer.fillColor = UIColor.black.cgColor
+                    chatMessageMainContextContentNode.layer.mask = maskShapeLayer
+                }
+                
+                do { // chatMessageBackgroundNode
+                    // We don't want to show original background yet,
+                    // because we need to clip everything outside of it's bounds,
+                    // which we are doing using "maskShapeLayer"
+                    chatMessageBackgroundNode.isHidden = true
+                }
+                
+                do { // chatMessageTextContentNode
+                    chatMessageTextContentNode.frame = config.inputTextContainerNode.convertedFrame.toBounds()
+                }
+                
+                do { // chatMessageWebpageContentNode
+                    if let chatMessageWebpageContentNode = chatMessageWebpageContentNode,
+                       let originalFrame = config.chatMessageWebpageContentNodeOriginalFrame {
+                        chatMessageWebpageContentNode.frame = CGRect(origin: CGPoint(x: 0.0, y: originalFrame.minY),
+                                                                     size: config.inputTextContainerNode.convertedFrame.size)
+                    }
+                }
+                
+                do { // chatMessageTextNode
+                    // Actually we should calculate difference in insets here to match content,
+                    // but apparently it is working fine without it. Needs to be investigated.
+                    // let insetsOffsetY = config.chatMessageTextNode.insets.top - config.inputTextNode.insets.top
+                    let insetsOffsetY: CGFloat = 0.0
+                    chatMessageTextNode.frame = chatMessageTextNode.frame.offsetBy(dx: CGFloat.zero, dy: -config.inputTextContainerNode.contentOffset.y + insetsOffsetY)
+                }
+                
+                do { // chatMessageStatusNode
+                    let origin = CGPoint(x: chatMessageTextContentNode.bounds.width - config.chatMessageStatusNode.offset.x - config.chatMessageStatusNode.originalFrame.size.width,
+                                                              y: chatMessageTextContentNode.bounds.height - config.chatMessageStatusNode.offset.y - config.chatMessageStatusNode.originalFrame.size.height)
+                    let convertedOrigin = chatMessageTextContentNode.view.convert(origin, to: chatMessageStatusNode.supernode!.view)
+                    chatMessageStatusNode.frame = CGRect(origin: convertedOrigin, size: chatMessageStatusNode.bounds.size)
+                    chatMessageStatusNode.alpha = CGFloat.zero
+                }
+                
+                do { // chatMessageReplyInfoNode
+                    if let chatMessageReplyInfoNode = chatMessageReplyInfoNode,
+                       let originalFrame = config.chatMessageReplyInfoNodeOriginalFrame {
+                        let chatMessageReplyInfoNodeFrameOffsetY = config.chatMessageTextContentNodeOriginalFrame.minY - originalFrame.minY
+                        chatMessageReplyInfoNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -chatMessageReplyInfoNodeFrameOffsetY),
+                                                                size: chatMessageReplyInfoNode.bounds.size)
+                    }
+                }
+                
+                do { // chatMessageForwardInfoNode
+                    if let chatMessageForwardInfoNode = chatMessageForwardInfoNode,
+                       let originalFrame = config.chatMessageForwardInfoNodeOriginalFrame {
+                        let chatMessageForwardInfoNodeFrameOffsetY = config.chatMessageTextContentNodeOriginalFrame.minY - originalFrame.minY
+                        chatMessageForwardInfoNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -chatMessageForwardInfoNodeFrameOffsetY),
+                                                                  size: chatMessageForwardInfoNode.bounds.size)
+                    }
+                }
             }
             
-            // Actually we should calculate difference in insets here to match content,
-            // but apparently it is working fine without it. Needs to be investigated.
-            // let insetsOffsetY = config.chatMessageTextNode.insets.top - config.inputTextNode.insets.top
-            let insetsOffsetY: CGFloat = 0.0
-            chatMessageTextNode.frame = chatMessageTextNode.frame.offsetBy(dx: CGFloat.zero, dy: -config.inputTextContainerNode.contentOffset.y + insetsOffsetY)
-            
-            let origin = CGPoint(x: chatMessageTextContentNode.bounds.width - config.chatMessageStatusNode.offset.x - config.chatMessageStatusNode.originalFrame.size.width,
-                                 y: chatMessageTextContentNode.bounds.height - config.chatMessageStatusNode.offset.y - config.chatMessageStatusNode.originalFrame.size.height)
-            let convertedOrigin = chatMessageTextContentNode.view.convert(origin, to: chatMessageStatusNode.supernode!.view)
-            chatMessageStatusNode.frame = CGRect(origin: convertedOrigin, size: chatMessageStatusNode.bounds.size)
-            chatMessageStatusNode.alpha = CGFloat.zero
-            
-            if let chatMessageReplyInfoNode = chatMessageReplyInfoNode,
-               let originalFrame = config.chatMessageReplyInfoNodeOriginalFrame {
-                let chatMessageReplyInfoNodeFrameOffsetY = config.chatMessageTextContentNodeOriginalFrame.minY - originalFrame.minY
-                chatMessageReplyInfoNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -chatMessageReplyInfoNodeFrameOffsetY),
-                                                        size: chatMessageReplyInfoNode.bounds.size)
-            }
-            
-            if let chatMessageForwardInfoNode = chatMessageForwardInfoNode,
-               let originalFrame = config.chatMessageForwardInfoNodeOriginalFrame {
-                let chatMessageForwardInfoNodeFrameOffsetY = config.chatMessageTextContentNodeOriginalFrame.minY - originalFrame.minY
-                chatMessageForwardInfoNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -chatMessageForwardInfoNodeFrameOffsetY),
-                                                          size: chatMessageForwardInfoNode.bounds.size)
-            }
-            
-            // Preparation is done, it's time to do animations!
+            // Preparation is done, it's time to go bananaz!!! (... and draw animations)
             CATransaction.begin()
             CATransaction.setCompletionBlock { [weak wChatMessageNode = chatMessageNode,
                                                 weak wChatMessageMainContainerNode = chatMessageMainContainerNode,
