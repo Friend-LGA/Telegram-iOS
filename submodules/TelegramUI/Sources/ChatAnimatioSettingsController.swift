@@ -3,9 +3,20 @@ import UIKit
 import Display
 import AsyncDisplayKit
 import AccountContext
-import TelegramPresentationData
 import ItemListUI
 import SwiftSignalKit
+import TelegramPresentationData
+import TelegramUIPreferences
+
+private final class ChatAnimationSettingsControllerArguments {
+    let openType: () -> Void
+    let openDuration: () -> Void
+
+    init(openType: @escaping () -> Void, openDuration: @escaping () -> Void) {
+        self.openType = openType
+        self.openDuration = openDuration
+    }
+}
 
 private enum ChatAnimationSettingsControllerSection: Int32 {
     case common
@@ -23,25 +34,23 @@ private enum ChatAnimationSettingsControllerEntryId: Int32 {
     case share
     case importParams
     case restore
+    case yPositionHeader
     case yPosition
+    case xPositionHeader
     case xPosition
+    case bubbleShapeHeader
     case bubbleShape
+    case textPositionHeader
     case textPosition
+    case colorChangeHeader
     case colorChange
+    case timeAppearsHeader
     case timeAppears
 }
 
-private final class ChatAnimationSettingsControllerArguments {
-    let placeholder: () -> Void
-
-    init(placeholder: @escaping () -> Void) {
-        self.placeholder = placeholder
-    }
-}
-
 private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
-    case type
-    case duration
+    case type(ChatAnimationType)
+    case duration(ChatAnimationDuration)
     case share
     case importParams
     case restore
@@ -77,56 +86,56 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
         }
     }
     
-    var stableId: Int32 {
+    var stableId: ChatAnimationSettingsControllerEntryId {
         switch self {
         case .type:
-            return 0
+            return .type
         case .duration:
-            return 1
+            return .duration
         case .share:
-            return 2
+            return .share
         case .importParams:
-            return 3
+            return .importParams
         case .restore:
-            return 4
+            return .restore
         case .yPositionHeader:
-            return 5
+            return .yPositionHeader
         case .yPosition:
-            return 6
+            return .yPosition
         case .xPositionHeader:
-            return 7
+            return .xPositionHeader
         case .xPosition:
-            return 8
+            return .xPosition
         case .bubbleShapeHeader:
-            return 9
+            return .bubbleShapeHeader
         case .bubbleShape:
-            return 10
+            return .bubbleShape
         case .textPositionHeader:
-            return 11
+            return .textPositionHeader
         case .textPosition:
-            return 12
+            return .textPosition
         case .colorChangeHeader:
-            return 13
+            return .colorChangeHeader
         case .colorChange:
-            return 14
+            return .colorChange
         case .timeAppearsHeader:
-            return 15
+            return .timeAppearsHeader
         case .timeAppears:
-            return 16
+            return .timeAppears
         }
     }
     
     static func <(lhs: ChatAnimationSettingsControllerEntry, rhs: ChatAnimationSettingsControllerEntry) -> Bool {
-        return lhs.stableId < rhs.stableId
+        return lhs.stableId.rawValue < rhs.stableId.rawValue
     }
     
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
-        // let arguments = arguments as! ChatAnimationSettingsControllerArguments
+        let arguments = arguments as! ChatAnimationSettingsControllerArguments
         switch self {
-        case .type:
-            return ItemListDisclosureItem(presentationData: presentationData, title: "Animation Type", label: "Small Message", labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {})
-        case .duration:
-            return ItemListDisclosureItem(presentationData: presentationData, title: "Duration", label: "30f", labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {})
+        case let .type(value):
+            return ItemListDisclosureItem(presentationData: presentationData, title: "Animation Type", label: value.rawValue, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.openType() })
+        case let .duration(value):
+            return ItemListDisclosureItem(presentationData: presentationData, title: "Duration", label: value.description, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.openDuration() })
         case .share:
             return ItemListActionItem(presentationData: presentationData, title: "Share Parameters", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: { })
         case .importParams:
@@ -161,10 +170,10 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
     }
 }
 
-private func createPollControllerEntries(presentationData: PresentationData) -> [ChatAnimationSettingsControllerEntry] {
+private func createChatAnimationSettingsControllerEntries() -> [ChatAnimationSettingsControllerEntry] {
     let entries: [ChatAnimationSettingsControllerEntry] = [
-        .type,
-        .duration,
+        .type(ChatAnimationType.small),
+        .duration(ChatAnimationDuration.medium),
         .share,
         .importParams,
         .restore,
@@ -186,39 +195,71 @@ private func createPollControllerEntries(presentationData: PresentationData) -> 
 
 public func createChatAnimationSettingsController(context: AccountContext) -> ViewController {
     var dismissImpl: (() -> Void)?
+    var pushControllerImpl: ((ViewController) -> Void)?
+    var presentActionSheetImpl: ((ActionSheetController) -> Void)?
     
     let signal = context.sharedContext.presentationData
         |> map { presentationData -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let leftNavigationButton = ItemListNavigationButton(content: .text(presentationData.strings.Common_Cancel), style: .regular, enabled: true, action: {
-            dismissImpl?()
-        })
-        
-        let rightNavigationButton = ItemListNavigationButton(content: .text("Apply"), style: .bold, enabled: true, action: {
-            dismissImpl?()
-        })
-        
-        let title = "Animation Settings"
-
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData),
-                                                      title: .text(title),
-                                                      leftNavigationButton: leftNavigationButton,
-                                                      rightNavigationButton: rightNavigationButton,
-                                                      backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back),
-                                                      animateChanges: false)
-        
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData),
-                                          entries: createPollControllerEntries(presentationData: presentationData),
-                                          style: .blocks)
-        
-        let arguments = ChatAnimationSettingsControllerArguments(placeholder: {})
-        
-        return (controllerState, (listState, arguments))
-    }
+            let leftNavigationButton = ItemListNavigationButton(content: .text(presentationData.strings.Common_Cancel), style: .regular, enabled: true, action: {
+                dismissImpl?()
+            })
+            
+            let rightNavigationButton = ItemListNavigationButton(content: .text("Apply"), style: .bold, enabled: true, action: {
+                dismissImpl?()
+            })
+                        
+            let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData),
+                                                          title: .text("Animation Settings"),
+                                                          leftNavigationButton: leftNavigationButton,
+                                                          rightNavigationButton: rightNavigationButton,
+                                                          backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back),
+                                                          animateChanges: false)
+            
+            let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData),
+                                              entries: createChatAnimationSettingsControllerEntries(),
+                                              style: .blocks)
+            
+            let openType: () -> Void = {
+                pushControllerImpl?(createChatAnimationSettingsTypeController(context: context))
+            }
+            let openDuration = {
+                let actionSheet = ActionSheetController(presentationData: presentationData)
+                actionSheet.setItemGroups([
+                    ActionSheetItemGroup(items: [
+                        ActionSheetTextItem(title: "Duration"),
+                        ActionSheetButtonItem(title: ChatAnimationDuration.fast.description, color: .accent, action: { [weak actionSheet] in
+                            actionSheet?.dismissAnimated()
+                        }),
+                        ActionSheetButtonItem(title: ChatAnimationDuration.medium.description, color: .accent, action: { [weak actionSheet] in
+                            actionSheet?.dismissAnimated()
+                        }),
+                        ActionSheetButtonItem(title: ChatAnimationDuration.slow.description, color: .accent, action: { [weak actionSheet] in
+                            actionSheet?.dismissAnimated()
+                        })
+                    ]),
+                    ActionSheetItemGroup(items: [
+                        ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak actionSheet] in
+                            actionSheet?.dismissAnimated()
+                        })
+                    ])
+                ])
+                presentActionSheetImpl?(actionSheet)
+            }
+            let arguments = ChatAnimationSettingsControllerArguments(openType: openType, openDuration: openDuration)
+            
+            return (controllerState, (listState, arguments))
+        }
     
     let controller = ItemListController(context: context, state: signal)
     
     dismissImpl = { [weak controller] in
         controller?.dismiss()
+    }
+    pushControllerImpl = { [weak controller] newController in
+        (controller?.navigationController as? NavigationController)?.pushViewController(newController)
+    }
+    presentActionSheetImpl = { [weak controller] actionSheet in
+        controller?.present(actionSheet, in: .window(.root))
     }
     
     controller.navigationPresentation = .modal
