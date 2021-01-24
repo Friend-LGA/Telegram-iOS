@@ -5,8 +5,10 @@ import AsyncDisplayKit
 import AccountContext
 import ItemListUI
 import SwiftSignalKit
+import LegacyMediaPickerUI
 import TelegramPresentationData
 import TelegramUIPreferences
+import PresentationDataUtils
 
 private final class ChatAnimationSettingsControllerArguments {
     let openType: () -> Void
@@ -214,8 +216,10 @@ private func createChatAnimationSettingsControllerEntries() -> [ChatAnimationSet
 public func createChatAnimationSettingsController(context: AccountContext) -> ViewController {
     var dismissImpl: (() -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
-    var presentActionSheetImpl: ((ActionSheetController) -> Void)?
-    var presentAvivityControllerImpl: ((UIActivityViewController) -> Void)?
+    var presentControllerImpl: ((ViewController) -> Void)?
+    var presentActivityControllerImpl: ((UIActivityViewController) -> Void)?
+    var chatAnimationSettings = ChatAnimationSettingsManager()
+    var animationType = ChatAnimationType.small
     
     let signal = context.sharedContext.presentationData
         |> map { presentationData -> (ItemListControllerState, (ItemListNodeState, Any)) in
@@ -262,35 +266,73 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
                         })
                     ])
                 ])
-                presentActionSheetImpl?(actionSheet)
+                presentControllerImpl?(actionSheet)
             },
             share: {
                 let (path, error) = ChatAnimationSettingsManager.generateJSONFile()
                 guard let filePath = path, error == nil else {
-                    // show error
+                    let action = TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
+                    let alertController = textAlertController(context: context, title: nil, text: "Failed to generate JSON file", actions: [action])
+                    presentControllerImpl?(alertController)
                     return
                 }
                 
-                let activityController = UIActivityViewController(activityItems: ["Check out this book! I like using Book Tracker.", filePath], applicationActivities: nil)
-                presentAvivityControllerImpl?(activityController)
-                
-//                if let window = strongSelf.view.window, let rootViewController = window.rootViewController {
-//                    activityController.popoverPresentationController?.sourceView = window
-//                    activityController.popoverPresentationController?.sourceRect = CGRect(origin: CGPoint(x: window.bounds.width / 2.0, y: window.bounds.size.height - 1.0), size: CGSize(width: 1.0, height: 1.0))
-//                    rootViewController.present(activityController, animated: true, completion: nil)
-//                }
+                let activityController = UIActivityViewController(activityItems: [filePath], applicationActivities: nil)
+                activityController.completionWithItemsHandler = { (activityType, completed: Bool, returnedItems: [Any]?, error: Error?) in
+                    try? FileManager.default.removeItem(at: filePath)
+                }
+                presentActivityControllerImpl?(activityController)
             },
             importParams: {
-                print(ChatAnimationSettingsManager.generateJSONString())
+                let pickerController = legacyICloudFilePicker(theme: presentationData.theme,
+                                                        mode: .import,
+                                                        documentTypes: ["org.telegram.Telegram-iOS.chat-animation"],
+                                                        allowsMultipleSelection: false,
+                                                        completion: { urls in
+                                                            guard let url = urls.first else { return }
+                                                            guard let data = try? Data(contentsOf: url) else {
+                                                                let action = TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
+                                                                let alertController = textAlertController(context: context, title: nil, text: "Failed to read file", actions: [action])
+                                                                presentControllerImpl?(alertController)
+                                                                return
+                                                            }
+                                                            let (animationSettings, decoderError) = ChatAnimationSettingsManager.decodeJSON(data)
+                                                            guard let settings = animationSettings, decoderError == nil else {
+                                                                let action = TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
+                                                                let alertController = textAlertController(context: context, title: nil, text: "Failed to import properties from the file.", actions: [action])
+                                                                presentControllerImpl?(alertController)
+                                                                return
+                                                            }
+                                                            
+                                                            let action1 = TextAlertAction(type: .genericAction, title: "All types", action: {
+                                                                chatAnimationSettings.update(settings)
+                                                            })
+                                                            let action2 = TextAlertAction(type: .defaultAction, title: "This type", action: {
+                                                                chatAnimationSettings.update(settings, type: animationType)
+                                                            })
+                                                            let alertController = textAlertController(context: context, title: nil, text: "Do you want to import parameters only for current animation type, or for all types?", actions: [action1, action2])
+                                                            presentControllerImpl?(alertController)
+                                                        })
+                presentControllerImpl?(pickerController)
             },
             restore: {
-                print(ChatAnimationSettingsManager.generateJSONString())
+                let action1 = TextAlertAction(type: .genericAction, title: "All types", action: {
+                    chatAnimationSettings.restore()
+                })
+                let action2 = TextAlertAction(type: .defaultAction, title: "This type", action: {
+                    chatAnimationSettings.restore(type: animationType)
+                })
+                let alertController = textAlertController(context: context, title: nil, text: "Do you want to restore parameters only for current animation type, or for all types?", actions: [action1, action2])
+                presentControllerImpl?(alertController)
             })
             
             return (controllerState, (listState, arguments))
         }
     
     let controller = ItemListController(context: context, state: signal)
+    controller.navigationPresentation = .modal
+    controller.alwaysSynchronous = true
+    controller.isOpaqueWhenInOverlay = true
     
     dismissImpl = { [weak controller] in
         controller?.dismiss()
@@ -298,18 +340,14 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
     pushControllerImpl = { [weak controller] newController in
         (controller?.navigationController as? NavigationController)?.pushViewController(newController)
     }
-    presentActionSheetImpl = { [weak controller] actionSheet in
-        controller?.present(actionSheet, in: .window(.root))
+    presentControllerImpl = { [weak controller] newController in
+        controller?.present(newController, in: .window(.root))
     }
-    presentAvivityControllerImpl = { [weak controller] activityController in
-//        guard let window = controller?.navigationController?.window, let rootVC = window.rootViewController else { return }
-//        activityController.popoverPresentationController?.sourceView = window
-        (controller?.navigationController as? NavigationController)?.present(activityController, animated: true, completion: nil)
+    presentActivityControllerImpl = { [weak controller] activityController in
+        guard let window = controller?.view.window, let rootVC = window.rootViewController else { return }
+        activityController.popoverPresentationController?.sourceView = window
+        rootVC.present(activityController, animated: true, completion: nil)
     }
-    
-    controller.navigationPresentation = .modal
-    controller.alwaysSynchronous = true
-    controller.isOpaqueWhenInOverlay = true
        
     return controller
 }

@@ -1416,6 +1416,27 @@ plist_fragment(
                 </array>
             </dict>
         </dict>
+        <dict>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>UTTypeDescription</key>
+            <string>Telegram iOS Chat Animation File</string>
+            <key>UTTypeIconFiles</key>
+            <array>
+                <string>BlueIcon@3x.png</string>
+            </array>
+            <key>UTTypeIdentifier</key>
+            <string>org.telegram.Telegram-iOS.chat-animation</string>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>tgios-anim</string>
+                </array>
+            </dict>
+        </dict>
     </array>
     """.format(
         telegram_bundle_id = telegram_bundle_id,
