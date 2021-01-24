@@ -11,10 +11,20 @@ import TelegramUIPreferences
 private final class ChatAnimationSettingsControllerArguments {
     let openType: () -> Void
     let openDuration: () -> Void
+    let share: () -> Void
+    let importParams: () -> Void
+    let restore: () -> Void
 
-    init(openType: @escaping () -> Void, openDuration: @escaping () -> Void) {
+    init(openType: @escaping () -> Void,
+         openDuration: @escaping () -> Void,
+         share: @escaping () -> Void,
+         importParams: @escaping () -> Void,
+         restore: @escaping () -> Void) {
         self.openType = openType
         self.openDuration = openDuration
+        self.share = share
+        self.importParams = importParams
+        self.restore = restore
     }
 }
 
@@ -133,15 +143,23 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
         let arguments = arguments as! ChatAnimationSettingsControllerArguments
         switch self {
         case let .type(value):
-            return ItemListDisclosureItem(presentationData: presentationData, title: "Animation Type", label: value.rawValue, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.openType() })
+            return ItemListDisclosureItem(presentationData: presentationData, title: "Animation Type", label: value.rawValue, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.openType()
+            })
         case let .duration(value):
-            return ItemListDisclosureItem(presentationData: presentationData, title: "Duration", label: value.description, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.openDuration() })
+            return ItemListDisclosureItem(presentationData: presentationData, title: "Duration", label: value.description, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.openDuration()
+            })
         case .share:
-            return ItemListActionItem(presentationData: presentationData, title: "Share Parameters", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: { })
+            return ItemListActionItem(presentationData: presentationData, title: "Share Parameters", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
+                arguments.share()
+            })
         case .importParams:
-            return ItemListActionItem(presentationData: presentationData, title: "Import Parameters", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: { })
+            return ItemListActionItem(presentationData: presentationData, title: "Import Parameters", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
+                arguments.importParams()
+            })
         case .restore:
-            return ItemListActionItem(presentationData: presentationData, title: "Restore to Default", kind: .destructive, alignment: .natural, sectionId: self.section, style: .blocks, action: { })
+            return ItemListActionItem(presentationData: presentationData, title: "Restore to Default", kind: .destructive, alignment: .natural, sectionId: self.section, style: .blocks, action: {
+                arguments.restore()
+            })
         case .yPositionHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "Y POSITION", sectionId: self.section)
         case .yPosition:
@@ -197,6 +215,7 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
     var dismissImpl: (() -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
     var presentActionSheetImpl: ((ActionSheetController) -> Void)?
+    var presentAvivityControllerImpl: ((UIActivityViewController) -> Void)?
     
     let signal = context.sharedContext.presentationData
         |> map { presentationData -> (ItemListControllerState, (ItemListNodeState, Any)) in
@@ -219,10 +238,10 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
                                               entries: createChatAnimationSettingsControllerEntries(),
                                               style: .blocks)
             
-            let openType: () -> Void = {
+            let arguments = ChatAnimationSettingsControllerArguments(openType: {
                 pushControllerImpl?(createChatAnimationSettingsTypeController(context: context))
-            }
-            let openDuration = {
+            },
+            openDuration: {
                 let actionSheet = ActionSheetController(presentationData: presentationData)
                 actionSheet.setItemGroups([
                     ActionSheetItemGroup(items: [
@@ -244,8 +263,29 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
                     ])
                 ])
                 presentActionSheetImpl?(actionSheet)
-            }
-            let arguments = ChatAnimationSettingsControllerArguments(openType: openType, openDuration: openDuration)
+            },
+            share: {
+                let (path, error) = ChatAnimationSettingsManager.generateJSONFile()
+                guard let filePath = path, error == nil else {
+                    // show error
+                    return
+                }
+                
+                let activityController = UIActivityViewController(activityItems: ["Check out this book! I like using Book Tracker.", filePath], applicationActivities: nil)
+                presentAvivityControllerImpl?(activityController)
+                
+//                if let window = strongSelf.view.window, let rootViewController = window.rootViewController {
+//                    activityController.popoverPresentationController?.sourceView = window
+//                    activityController.popoverPresentationController?.sourceRect = CGRect(origin: CGPoint(x: window.bounds.width / 2.0, y: window.bounds.size.height - 1.0), size: CGSize(width: 1.0, height: 1.0))
+//                    rootViewController.present(activityController, animated: true, completion: nil)
+//                }
+            },
+            importParams: {
+                print(ChatAnimationSettingsManager.generateJSONString())
+            },
+            restore: {
+                print(ChatAnimationSettingsManager.generateJSONString())
+            })
             
             return (controllerState, (listState, arguments))
         }
@@ -260,6 +300,11 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
     }
     presentActionSheetImpl = { [weak controller] actionSheet in
         controller?.present(actionSheet, in: .window(.root))
+    }
+    presentAvivityControllerImpl = { [weak controller] activityController in
+//        guard let window = controller?.navigationController?.window, let rootVC = window.rootViewController else { return }
+//        activityController.popoverPresentationController?.sourceView = window
+        (controller?.navigationController as? NavigationController)?.present(activityController, animated: true, completion: nil)
     }
     
     controller.navigationPresentation = .modal

@@ -48,7 +48,7 @@ public struct ChatAnimationSettingsEmoji: Codable {
     public let duration: ChatAnimationDuration
 }
 
-public struct ChatAnimationSettingsManager {
+public struct ChatAnimationSettingsManager: Codable {
     static private let smallSettingsKey = "ChatAnimationSettingsForSmallType"
     static private let bigSettingsKey = "ChatAnimationSettingsForBigType"
     static private let linkSettingsKey = "ChatAnimationSettingsForLinkType"
@@ -64,6 +64,16 @@ public struct ChatAnimationSettingsManager {
     static private var _stickerSettings: ChatAnimationSettingsCommon?
     static private var _voiceSettings: ChatAnimationSettingsCommon?
     static private var _videoSettings: ChatAnimationSettingsCommon?
+    
+    private var smallSettings = ChatAnimationSettingsManager.smallSettings
+    private var bigSettings = ChatAnimationSettingsManager.bigSettings
+    private var linkSettings = ChatAnimationSettingsManager.linkSettings
+    private var emojiSettings = ChatAnimationSettingsManager.emojiSettings
+    private var stickerSettings = ChatAnimationSettingsManager.stickerSettings
+    private var voiceSettings = ChatAnimationSettingsManager.voiceSettings
+    private var videoSettings = ChatAnimationSettingsManager.videoSettings
+    
+    private init() {}
     
     static public var smallSettings: ChatAnimationSettingsCommon {
         if let settings = self._smallSettings {
@@ -86,7 +96,7 @@ public struct ChatAnimationSettingsManager {
         if let settings = defaults.object(forKey: bigSettingsKey) as? ChatAnimationSettingsCommon {
             self._bigSettings = settings
         } else {
-            self._bigSettings = ChatAnimationSettingsCommon(type: ChatAnimationType.small, duration: ChatAnimationDuration.medium)
+            self._bigSettings = ChatAnimationSettingsCommon(type: ChatAnimationType.big, duration: ChatAnimationDuration.medium)
         }
         return self._bigSettings!
     }
@@ -99,7 +109,7 @@ public struct ChatAnimationSettingsManager {
         if let settings = defaults.object(forKey: linkSettingsKey) as? ChatAnimationSettingsCommon {
             self._linkSettings = settings
         } else {
-            self._linkSettings = ChatAnimationSettingsCommon(type: ChatAnimationType.small, duration: ChatAnimationDuration.medium)
+            self._linkSettings = ChatAnimationSettingsCommon(type: ChatAnimationType.link, duration: ChatAnimationDuration.medium)
         }
         return self._linkSettings!
     }
@@ -112,7 +122,7 @@ public struct ChatAnimationSettingsManager {
         if let settings = defaults.object(forKey: emojiSettingsKey) as? ChatAnimationSettingsEmoji {
             self._emojiSettings = settings
         } else {
-            self._emojiSettings = ChatAnimationSettingsEmoji(type: ChatAnimationType.small, duration: ChatAnimationDuration.medium)
+            self._emojiSettings = ChatAnimationSettingsEmoji(type: ChatAnimationType.emoji, duration: ChatAnimationDuration.medium)
         }
         return self._emojiSettings!
     }
@@ -125,7 +135,7 @@ public struct ChatAnimationSettingsManager {
         if let settings = defaults.object(forKey: stickerSettingsKey) as? ChatAnimationSettingsCommon {
             self._stickerSettings = settings
         } else {
-            self._stickerSettings = ChatAnimationSettingsCommon(type: ChatAnimationType.small, duration: ChatAnimationDuration.medium)
+            self._stickerSettings = ChatAnimationSettingsCommon(type: ChatAnimationType.sticker, duration: ChatAnimationDuration.medium)
         }
         return self._stickerSettings!
     }
@@ -138,7 +148,7 @@ public struct ChatAnimationSettingsManager {
         if let settings = defaults.object(forKey: voiceSettingsKey) as? ChatAnimationSettingsCommon {
             self._voiceSettings = settings
         } else {
-            self._voiceSettings = ChatAnimationSettingsCommon(type: ChatAnimationType.small, duration: ChatAnimationDuration.medium)
+            self._voiceSettings = ChatAnimationSettingsCommon(type: ChatAnimationType.voice, duration: ChatAnimationDuration.medium)
         }
         return self._voiceSettings!
     }
@@ -151,12 +161,12 @@ public struct ChatAnimationSettingsManager {
         if let settings = defaults.object(forKey: videoSettingsKey) as? ChatAnimationSettingsCommon {
             self._videoSettings = settings
         } else {
-            self._videoSettings = ChatAnimationSettingsCommon(type: ChatAnimationType.small, duration: ChatAnimationDuration.medium)
+            self._videoSettings = ChatAnimationSettingsCommon(type: ChatAnimationType.video, duration: ChatAnimationDuration.medium)
         }
         return self._videoSettings!
     }
         
-    static func update() {
+    static public func update() {
         let defaults = UserDefaults.standard
         defaults.set(self.smallSettings, forKey: self.smallSettingsKey)
         defaults.set(self.bigSettings, forKey: self.bigSettingsKey)
@@ -165,5 +175,64 @@ public struct ChatAnimationSettingsManager {
         defaults.set(self.stickerSettings, forKey: self.stickerSettingsKey)
         defaults.set(self.voiceSettings, forKey: self.voiceSettingsKey)
         defaults.set(self.videoSettings, forKey: self.videoSettingsKey)
+    }
+    
+    static private func update(_ settings: ChatAnimationSettingsManager) {
+        self._smallSettings = settings.smallSettings
+        self._bigSettings = settings.bigSettings
+        self._linkSettings = settings.linkSettings
+        self._emojiSettings = settings.emojiSettings
+        self._stickerSettings = settings.stickerSettings
+        self._voiceSettings = settings.voiceSettings
+        self._videoSettings = settings.videoSettings
+        self.update()
+    }
+    
+    static public func generateJSONData() -> (Data?, Error?) {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        let settings = self.init()
+        
+        do {
+            let data = try encoder.encode(settings)
+            return (data, nil)
+        } catch let error {
+            return (nil, error)
+        }
+    }
+    
+    static public func generateJSONString() -> (String?, Error?) {
+        let (jsonData, error) = self.generateJSONData()
+        guard let data = jsonData else { return (nil, error) }
+        let string = String(data: data, encoding: .utf8)
+        return (string, nil)
+    }
+    
+    static public func generateJSONFile() -> (URL?, Error?) {
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        guard let path = documents?.appendingPathComponent("ChatAnimationSettings.json") else {
+            return (nil, nil) // TODO: Should return custom error
+        }
+        
+        let (jsonData, error) = self.generateJSONData()
+        guard let data = jsonData else { return (nil, error) }
+        
+        do {
+            try data.write(to: path)
+            return (path, nil)
+        } catch let error {
+            return (nil, error)
+        }
+    }
+    
+    static public func decodeJSON(_ data: Data) -> Error? {
+        do {
+            let decoder = JSONDecoder()
+            let settings = try decoder.decode(self, from: data)
+            self.update(settings)
+            return nil
+        } catch let error {
+            return error
+        }
     }
 }
