@@ -7395,24 +7395,29 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 self.navigationActionDisposable.set((peerView.get()
                 |> take(1)
                 |> deliverOnMainQueue).start(next: { [weak self] peerView in
-                    if let strongSelf = self, let peer = peerView.peers[peerView.peerId], peer.restrictionText(platform: "ios", contentSettings: strongSelf.context.currentContentSettings.with { $0 }) == nil && !strongSelf.presentationInterfaceState.isNotAccessible {
-                        if peer.id == strongSelf.context.account.peerId {
-                            if let peer = strongSelf.presentationInterfaceState.renderedPeer?.chatMainPeer, let infoController = strongSelf.context.sharedContext.makePeerInfoController(context: strongSelf.context, peer: peer, mode: .generic, avatarInitiallyExpanded: false, fromChat: true) {
-                                strongSelf.effectiveNavigationController?.pushViewController(infoController)
-                            }
-                        } else {
-                            var expandAvatar = expandAvatar
-                            if peer.smallProfileImage == nil {
-                                expandAvatar = false
-                            }
-                            if let validLayout = strongSelf.validLayout, validLayout.deviceMetrics.type == .tablet {
-                                expandAvatar = false
-                            }
-                            if let infoController = strongSelf.context.sharedContext.makePeerInfoController(context: strongSelf.context, peer: peer, mode: .generic, avatarInitiallyExpanded: expandAvatar, fromChat: true) {
-                                strongSelf.effectiveNavigationController?.pushViewController(infoController)
-                            }
-                        }
+                    if let strongSelf = self {
+                        let animationSettingsController = strongSelf.context.sharedContext.makeChatAnimationSettingsController(context: strongSelf.context)
+                        strongSelf.effectiveNavigationController?.pushViewController(animationSettingsController)
                     }
+                    
+//                    if let strongSelf = self, let peer = peerView.peers[peerView.peerId], peer.restrictionText(platform: "ios", contentSettings: strongSelf.context.currentContentSettings.with { $0 }) == nil && !strongSelf.presentationInterfaceState.isNotAccessible {
+//                        if peer.id == strongSelf.context.account.peerId {
+//                            if let peer = strongSelf.presentationInterfaceState.renderedPeer?.chatMainPeer, let infoController = strongSelf.context.sharedContext.makePeerInfoController(context: strongSelf.context, peer: peer, mode: .generic, avatarInitiallyExpanded: false, fromChat: true) {
+//                                strongSelf.effectiveNavigationController?.pushViewController(infoController)
+//                            }
+//                        } else {
+//                            var expandAvatar = expandAvatar
+//                            if peer.smallProfileImage == nil {
+//                                expandAvatar = false
+//                            }
+//                            if let validLayout = strongSelf.validLayout, validLayout.deviceMetrics.type == .tablet {
+//                                expandAvatar = false
+//                            }
+//                            if let infoController = strongSelf.context.sharedContext.makePeerInfoController(context: strongSelf.context, peer: peer, mode: .generic, avatarInitiallyExpanded: expandAvatar, fromChat: true) {
+//                                strongSelf.effectiveNavigationController?.pushViewController(infoController)
+//                            }
+//                        }
+//                    }
                 }))
             case .replyThread:
                 break
