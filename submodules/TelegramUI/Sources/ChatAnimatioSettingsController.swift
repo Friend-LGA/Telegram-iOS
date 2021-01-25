@@ -335,6 +335,7 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
     controller.isOpaqueWhenInOverlay = true
     controller.blocksBackgroundWhenInOverlay = true
     controller.acceptsFocusWhenInOverlay = true
+    controller.additionalInsets = UIEdgeInsets(top: CGFloat.zero, left: CGFloat.zero, bottom: 64.0, right: CGFloat.zero)
     
     dismissImpl = { [weak controller] in
         controller?.dismiss()
