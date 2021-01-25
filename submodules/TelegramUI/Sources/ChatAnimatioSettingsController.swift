@@ -165,27 +165,27 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
         case .yPositionHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "Y POSITION", sectionId: self.section)
         case .yPosition:
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(), text: "", placeholder: "", sectionId: self.section, textUpdated: {_ in}, action: {})
+            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
         case .xPositionHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "X POSITION", sectionId: self.section)
         case .xPosition:
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(), text: "", placeholder: "", sectionId: self.section, textUpdated: {_ in}, action: {})
+            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
         case .bubbleShapeHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "BUBBLE SHAPE", sectionId: self.section)
         case .bubbleShape:
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(), text: "", placeholder: "", sectionId: self.section, textUpdated: {_ in}, action: {})
+            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
         case .textPositionHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "TEXT POSITION", sectionId: self.section)
         case .textPosition:
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(), text: "", placeholder: "", sectionId: self.section, textUpdated: {_ in}, action: {})
+            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
         case .colorChangeHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "COLOR CHANGE", sectionId: self.section)
         case .colorChange:
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(), text: "", placeholder: "", sectionId: self.section, textUpdated: {_ in}, action: {})
+            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
         case .timeAppearsHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "TIME APPEARS", sectionId: self.section)
         case .timeAppears:
-            return ItemListSingleLineInputItem(presentationData: presentationData, title: NSAttributedString(), text: "", placeholder: "", sectionId: self.section, textUpdated: {_ in}, action: {})
+            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
         }
     }
 }
@@ -218,8 +218,8 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
     var pushControllerImpl: ((ViewController) -> Void)?
     var presentControllerImpl: ((ViewController) -> Void)?
     var presentActivityControllerImpl: ((UIActivityViewController) -> Void)?
-    var chatAnimationSettings = ChatAnimationSettingsManager()
-    var animationType = ChatAnimationType.small
+    let chatAnimationSettings = ChatAnimationSettingsManager()
+    let animationType = ChatAnimationType.small
     
     let signal = context.sharedContext.presentationData
         |> map { presentationData -> (ItemListControllerState, (ItemListNodeState, Any)) in
@@ -333,6 +333,8 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
     controller.navigationPresentation = .modal
     controller.alwaysSynchronous = true
     controller.isOpaqueWhenInOverlay = true
+    controller.blocksBackgroundWhenInOverlay = true
+    controller.acceptsFocusWhenInOverlay = true
     
     dismissImpl = { [weak controller] in
         controller?.dismiss()
