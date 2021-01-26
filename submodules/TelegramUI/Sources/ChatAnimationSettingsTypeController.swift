@@ -9,7 +9,11 @@ import TelegramPresentationData
 import TelegramUIPreferences
 
 private final class ChatAnimationSettingsTypeControllerArguments {
-    init() {}
+    let dismiss: () -> Void
+    
+    init(dismiss: @escaping () -> Void) {
+        self.dismiss = dismiss
+    }
 }
 
 private enum ChatAnimationSettingsTypeControllerSection: Int32 {
@@ -29,13 +33,13 @@ private enum ChatAnimationSettingsTypeControllerEntryId: Int32 {
 
 private enum ChatAnimationSettingsTypeControllerEntry: ItemListNodeEntry {
     case messagesHeader
-    case small
-    case big
-    case link
-    case emoji
-    case sticker
-    case voice
-    case video
+    case small(ChatAnimationType, (ChatAnimationType) -> Void)
+    case big(ChatAnimationType, (ChatAnimationType) -> Void)
+    case link(ChatAnimationType, (ChatAnimationType) -> Void)
+    case emoji(ChatAnimationType, (ChatAnimationType) -> Void)
+    case sticker(ChatAnimationType, (ChatAnimationType) -> Void)
+    case voice(ChatAnimationType, (ChatAnimationType) -> Void)
+    case video(ChatAnimationType, (ChatAnimationType) -> Void)
     
     var section: ItemListSectionId {
         return ChatAnimationSettingsTypeControllerSection.messages.rawValue
@@ -62,47 +66,49 @@ private enum ChatAnimationSettingsTypeControllerEntry: ItemListNodeEntry {
         }
     }
     
+    static func == (lhs: ChatAnimationSettingsTypeControllerEntry, rhs: ChatAnimationSettingsTypeControllerEntry) -> Bool {
+        return lhs.stableId.rawValue == rhs.stableId.rawValue
+    }
+    
     static func <(lhs: ChatAnimationSettingsTypeControllerEntry, rhs: ChatAnimationSettingsTypeControllerEntry) -> Bool {
         return lhs.stableId.rawValue < rhs.stableId.rawValue
     }
     
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! ChatAnimationSettingsTypeControllerArguments
+        
         switch self {
         case .messagesHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "MESSAGES", sectionId: self.section)
-        case .small:
-            return ItemListActionItem(presentationData: presentationData, title: ChatAnimationType.small.description, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: { })
-        case .big:
-            return ItemListActionItem(presentationData: presentationData, title: ChatAnimationType.big.description, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: { })
-        case .link:
-            return ItemListActionItem(presentationData: presentationData, title: ChatAnimationType.link.description, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: { })
-        case .emoji:
-            return ItemListActionItem(presentationData: presentationData, title: ChatAnimationType.emoji.description, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: { })
-        case .sticker:
-            return ItemListActionItem(presentationData: presentationData, title: ChatAnimationType.sticker.description, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: { })
-        case .voice:
-            return ItemListActionItem(presentationData: presentationData, title: ChatAnimationType.voice.description, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: { })
-        case .video:
-            return ItemListActionItem(presentationData: presentationData, title: ChatAnimationType.video.description, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: { })
+        case let .small(type, onChange),
+             let .big(type, onChange),
+             let .link(type, onChange),
+             let .emoji(type, onChange),
+             let .sticker(type, onChange),
+             let .voice(type, onChange),
+             let .video(type, onChange):
+            return ItemListActionItem(presentationData: presentationData, title: type.description, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
+                onChange(type)
+                arguments.dismiss()
+            })
         }
     }
 }
 
-private func createChatAnimationSettingsTypeEntries() -> [ChatAnimationSettingsTypeControllerEntry] {
+private func createChatAnimationSettingsTypeEntries(onChange: @escaping (ChatAnimationType) -> Void) -> [ChatAnimationSettingsTypeControllerEntry] {
     let entries: [ChatAnimationSettingsTypeControllerEntry] = [
-        .small,
-        .big,
-        .link,
-        .emoji,
-        .sticker,
-        .voice,
-        .video,
+        .small(.small, onChange),
+        .big(.big, onChange),
+        .link(.link, onChange),
+        .emoji(.emoji, onChange),
+        .sticker(.sticker, onChange),
+        .voice(.voice, onChange),
+        .video(.video, onChange),
     ]
     return entries
 }
 
-public func createChatAnimationSettingsTypeController(context: AccountContext) -> ViewController {
+public func createChatAnimationSettingsTypeController(context: AccountContext, onChange: @escaping (ChatAnimationType) -> Void) -> ViewController {
     var dismissImpl: (() -> Void)?
     
     let signal = context.sharedContext.presentationData
@@ -115,22 +121,24 @@ public func createChatAnimationSettingsTypeController(context: AccountContext) -
                                                           animateChanges: false)
             
             let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData),
-                                              entries: createChatAnimationSettingsTypeEntries(),
-                                              style: .blocks)
+                                              entries: createChatAnimationSettingsTypeEntries(onChange: onChange),
+                                              style: .blocks,
+                                              animateChanges: false)
             
-            let arguments = ChatAnimationSettingsTypeControllerArguments()
+            let arguments = ChatAnimationSettingsTypeControllerArguments(dismiss: {
+                dismissImpl?()
+            })
             
             return (controllerState, (listState, arguments))
         }
     
     let controller = ItemListController(context: context, state: signal)
+    controller.alwaysSynchronous = true
+    controller.isOpaqueWhenInOverlay = true
     
     dismissImpl = { [weak controller] in
         controller?.dismiss()
     }
-    
-    controller.alwaysSynchronous = true
-    controller.isOpaqueWhenInOverlay = true
        
     return controller
 }

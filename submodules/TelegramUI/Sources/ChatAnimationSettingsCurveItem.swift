@@ -5,16 +5,17 @@ import AsyncDisplayKit
 import SwiftSignalKit
 import ItemListUI
 import TelegramPresentationData
+import TelegramUIPreferences
 
-private var transfromSliderKnobImage: UIImage?
-private let transfromSliderKnobSize = CGSize(width: 28.0, height: 28.0)
-private let transfromSliderKnobInsetSize = CGSize(width: 8.0, height: 12.0)
+private var controlSliderKnobImage: UIImage?
+private let controlSliderKnobSize = CGSize(width: 28.0, height: 28.0)
+private let controlSliderKnobInsetSize = CGSize(width: 8.0, height: 12.0)
 
-private var boundSliderKnobImage: UIImage?
-private let boundSliderKnobSize = CGSize(width: 20.0, height: 36.0)
-private let boundSliderKnobInsetSize = CGSize(width: 12.0, height: 8.0)
+private var offsetSliderKnobImage: UIImage?
+private let offsetSliderKnobSize = CGSize(width: 20.0, height: 36.0)
+private let offsetSliderKnobInsetSize = CGSize(width: 12.0, height: 8.0)
 
-private let gapBetweenSliders: Float = 0.2 // In the range of it's values
+private let gapBetweenSliders: Float = 0.2
 private let contentInsets = UIEdgeInsets(top: 16.0, left: 8.0, bottom: 16.0, right: 8.0)
 private let contentHeight: CGFloat = 288.0
 private let kindaYellow = UIColor(red: 1.0, green: 0.8, blue: 0.0, alpha: 1.0) // #ffcd00 // rgb(255, 205, 0)
@@ -36,11 +37,11 @@ private let smallDotSize = CGSize(width: smallDotDiameter, height: smallDotDiame
 private let smallDotsGap = smallDotDiameter * 4.0
 
 private func prepareImages() {
-    if transfromSliderKnobImage == nil {
-        transfromSliderKnobImage = generateTransformSliderKnobImage()
+    if controlSliderKnobImage == nil {
+        controlSliderKnobImage = generateTransformSliderKnobImage()
     }
-    if boundSliderKnobImage == nil {
-        boundSliderKnobImage = generateBoundSliderKnobImage()
+    if offsetSliderKnobImage == nil {
+        offsetSliderKnobImage = generateBoundSliderKnobImage()
     }
 }
 
@@ -62,11 +63,11 @@ private func generateKnobImage(_ knobSize: CGSize, _ insetSize: CGSize) -> UIIma
 }
 
 private func generateTransformSliderKnobImage() -> UIImage? {
-    return generateKnobImage(transfromSliderKnobSize, transfromSliderKnobInsetSize)
+    return generateKnobImage(controlSliderKnobSize, controlSliderKnobInsetSize)
 }
 
 private func generateBoundSliderKnobImage() -> UIImage? {
-    return generateKnobImage(boundSliderKnobSize, boundSliderKnobInsetSize)
+    return generateKnobImage(offsetSliderKnobSize, offsetSliderKnobInsetSize)
 }
 
 class ChatAnimationSettingsCurveSlider: UISlider {
@@ -102,10 +103,14 @@ class ChatAnimationSettingsCurveSlider: UISlider {
 class ChatAnimationSettingsCurveItem: ListViewItem, ItemListItem {
     let presentationData: ItemListPresentationData
     var sectionId: ItemListSectionId
+    let duration: ChatAnimationDuration
+    let timingFunction: ChatAnimationTimingFunction
     
-    init(presentationData: ItemListPresentationData, sectionId: ItemListSectionId) {
+    init(presentationData: ItemListPresentationData, sectionId: ItemListSectionId, duration: ChatAnimationDuration, timingFunction: ChatAnimationTimingFunction) {
         self.presentationData = presentationData
         self.sectionId = sectionId
+        self.duration = duration
+        self.timingFunction = timingFunction
     }
     
     func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: ListViewItemLayoutParams, synchronousLoads: Bool, previousItem: ListViewItem?, nextItem: ListViewItem?, completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) {
@@ -146,23 +151,23 @@ private final class ChatAnimationSettingsCurveNodeParams: NSObject {
     let drawingRect: CGRect?
     let topControlPointOffset: CGFloat
     let bottomControlPointOffset: CGFloat
-    let leftCapOffset: CGFloat
-    let rightCapOffset: CGFloat
+    let leftBoundsOffset: CGFloat
+    let rightBoundsOffset: CGFloat
     let curveColor: UIColor?
     let accentColor: UIColor?
     
     init(drawingRect: CGRect?,
          topControlPointOffset: CGFloat,
          bottomControlPointOffset: CGFloat,
-         leftCapOffset: CGFloat,
-         rightCapOffset: CGFloat,
+         leftBoundsOffset: CGFloat,
+         rightBoundsOffset: CGFloat,
          curveColor: UIColor?,
          accentColor: UIColor?) {
         self.drawingRect = drawingRect
         self.topControlPointOffset = topControlPointOffset
         self.bottomControlPointOffset = bottomControlPointOffset
-        self.leftCapOffset = leftCapOffset
-        self.rightCapOffset = rightCapOffset
+        self.leftBoundsOffset = leftBoundsOffset
+        self.rightBoundsOffset = rightBoundsOffset
         self.curveColor = curveColor
         self.accentColor = accentColor
         super.init()
@@ -171,6 +176,9 @@ private final class ChatAnimationSettingsCurveNodeParams: NSObject {
 
 class ChatAnimationSettingsCurveNode: ASDisplayNode {
     private var presentationData: ItemListPresentationData?
+    private var duration: ChatAnimationDuration?
+    private var timingFunction: ChatAnimationTimingFunction?
+    
     private let topSlider = ChatAnimationSettingsCurveSlider()
     private let bottomSlider = ChatAnimationSettingsCurveSlider()
     private let leftSlider = ChatAnimationSettingsCurveSlider()
@@ -184,9 +192,12 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
     private var curveColor: UIColor?
     private var accentColor: UIColor?
     
+    private var isInitialized = false
+    private var boundsSliderMaxValue: CGFloat?
+    
     override init() {
         super.init()
-                
+        
         // Should be done somewhere in theme
         prepareImages()
         
@@ -195,14 +206,13 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
         self.isOpaque = false
         self.backgroundColor = UIColor.clear
         
+        self.topSlider.maximumValue = 1.0
         self.topSlider.isOpaque = false
         self.topSlider.backgroundColor = UIColor.clear
         self.topSlider.isContinuous = true
-        self.topSlider.setThumbImage(transfromSliderKnobImage, for: .normal)
+        self.topSlider.setThumbImage(controlSliderKnobImage, for: .normal)
         self.topSlider.addTarget(self, action: #selector(self.topSliderValueChanged), for: .valueChanged)
         self.topSlider.minimumValue = 0.0
-        self.topSlider.maximumValue = 100.0
-        self.topSlider.value = 100.0
         self.topSlider.setMinimumTrackImage(nil, for: .normal)
         self.topSlider.minimumTrackTintColor = UIColor.clear
         self.topSlider.setMaximumTrackImage(nil, for: .normal)
@@ -210,40 +220,37 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
         // Rotate it to get inverted slider from 100 to 1
         self.topSlider.transform = CGAffineTransform(rotationAngle: .pi)
         
+        self.bottomSlider.maximumValue = 1.0
         self.bottomSlider.isOpaque = false
         self.bottomSlider.backgroundColor = UIColor.clear
         self.bottomSlider.isContinuous = true
-        self.bottomSlider.setThumbImage(transfromSliderKnobImage, for: .normal)
+        self.bottomSlider.setThumbImage(controlSliderKnobImage, for: .normal)
         self.bottomSlider.addTarget(self, action: #selector(self.bottomSliderValueChanged), for: .valueChanged)
         self.bottomSlider.minimumValue = 0.0
-        self.bottomSlider.maximumValue = 100.0
-        self.bottomSlider.value = 100.0
         self.bottomSlider.setMinimumTrackImage(nil, for: .normal)
         self.bottomSlider.minimumTrackTintColor = UIColor.clear
         self.bottomSlider.setMaximumTrackImage(nil, for: .normal)
         self.bottomSlider.maximumTrackTintColor = UIColor.clear
         
+        self.leftSlider.maximumValue = 1.0
         self.leftSlider.isOpaque = false
         self.leftSlider.backgroundColor = UIColor.clear
         self.leftSlider.isContinuous = true
-        self.leftSlider.setThumbImage(boundSliderKnobImage, for: .normal)
+        self.leftSlider.setThumbImage(offsetSliderKnobImage, for: .normal)
         self.leftSlider.addTarget(self, action: #selector(self.leftSliderValueChanged), for: .valueChanged)
         self.leftSlider.minimumValue = 0.0
-        self.leftSlider.maximumValue = 1.0
-        self.leftSlider.value = 0.0
         self.leftSlider.setMinimumTrackImage(nil, for: .normal)
         self.leftSlider.minimumTrackTintColor = UIColor.clear
         self.leftSlider.setMaximumTrackImage(nil, for: .normal)
         self.leftSlider.maximumTrackTintColor = UIColor.clear
         
+        self.rightSlider.maximumValue = 1.0
         self.rightSlider.isOpaque = false
         self.rightSlider.backgroundColor = UIColor.clear
         self.rightSlider.isContinuous = true
-        self.rightSlider.setThumbImage(boundSliderKnobImage, for: .normal)
+        self.rightSlider.setThumbImage(offsetSliderKnobImage, for: .normal)
         self.rightSlider.addTarget(self, action: #selector(self.rightSliderValueChanged), for: .valueChanged)
         self.rightSlider.minimumValue = 0.0
-        self.rightSlider.maximumValue = 1.0
-        self.rightSlider.value = 1.0
         self.rightSlider.setMinimumTrackImage(nil, for: .normal)
         self.rightSlider.minimumTrackTintColor = UIColor.clear
         self.rightSlider.setMaximumTrackImage(nil, for: .normal)
@@ -280,11 +287,17 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
     
     @objc
     private func topSliderValueChanged() {
+        if let timingFunction = self.timingFunction {
+            timingFunction.controlPoint2 = CGPoint(x: CGFloat(1.0 - self.topSlider.value), y: 1.0)
+        }
         self.setNeedsDisplay()
     }
     
     @objc
     private func bottomSliderValueChanged() {
+        if let timingFunction = self.timingFunction {
+            timingFunction.controlPoint1 = CGPoint(x: CGFloat(self.bottomSlider.value), y: 0.0)
+        }
         self.setNeedsDisplay()
     }
     
@@ -293,7 +306,9 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
         if self.rightSlider.value - self.leftSlider.value < gapBetweenSliders {
             self.leftSlider.value = self.rightSlider.value - gapBetweenSliders
         }
-        
+        if let timingFunction = self.timingFunction {
+            timingFunction.startPoint = CGPoint(x: CGFloat(self.leftSlider.value), y: 0.0)
+        }
         self.setNeedsDisplay()
     }
     
@@ -302,7 +317,9 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
         if self.rightSlider.value - self.leftSlider.value < gapBetweenSliders {
             self.rightSlider.value = self.leftSlider.value + gapBetweenSliders
         }
-        
+        if let timingFunction = self.timingFunction {
+            timingFunction.endPoint = CGPoint(x: CGFloat(self.rightSlider.value), y: 1.0)
+        }
         self.setNeedsDisplay()
     }
     
@@ -313,27 +330,27 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
             return nil
         }
         
-        let leftCapOffset = round(CGFloat(self.leftSlider.value / self.leftSlider.maximumValue) * drawingRect.width)
-        let rightCapOffset = round(CGFloat((self.rightSlider.maximumValue - self.rightSlider.value) / self.rightSlider.maximumValue) * drawingRect.width)
-        var width = contentRect.width - leftCapOffset - rightCapOffset
+        let leftBoundsOffset = round(CGFloat(self.leftSlider.value / self.leftSlider.maximumValue) * drawingRect.width)
+        let rightBoundsOffset = round(CGFloat((self.rightSlider.maximumValue - self.rightSlider.value) / self.rightSlider.maximumValue) * drawingRect.width)
+        var width = contentRect.width - leftBoundsOffset - rightBoundsOffset
         
-        self.topSlider.frame = CGRect(origin: CGPoint(x: contentRect.minX + leftCapOffset, y: self.topSlider.frame.minY),
+        self.topSlider.frame = CGRect(origin: CGPoint(x: contentRect.minX + leftBoundsOffset, y: self.topSlider.frame.minY),
                                       size: CGSize(width: width, height: self.topSlider.frame.height))
-        self.bottomSlider.frame = CGRect(origin: CGPoint(x: contentRect.minX + leftCapOffset, y: self.bottomSlider.frame.minY),
+        self.bottomSlider.frame = CGRect(origin: CGPoint(x: contentRect.minX + leftBoundsOffset, y: self.bottomSlider.frame.minY),
                                          size: CGSize(width: width, height: self.bottomSlider.frame.height))
         
         self.updateLabelsLayout()
-                
+        
         if (generateParams) {
-            width = drawingRect.width - leftCapOffset - rightCapOffset
+            width = drawingRect.width - leftBoundsOffset - rightBoundsOffset
             let topControlPointOffset = round(CGFloat((self.topSlider.maximumValue - self.topSlider.value) / self.topSlider.maximumValue) * width)
             let bottomControlPointOffset = round(CGFloat((self.bottomSlider.maximumValue - self.bottomSlider.value) / self.bottomSlider.maximumValue) * width)
             
             return ChatAnimationSettingsCurveNodeParams(drawingRect: self.drawingRect,
                                                         topControlPointOffset: topControlPointOffset,
                                                         bottomControlPointOffset: bottomControlPointOffset,
-                                                        leftCapOffset: leftCapOffset,
-                                                        rightCapOffset: rightCapOffset,
+                                                        leftBoundsOffset: leftBoundsOffset,
+                                                        rightBoundsOffset: rightBoundsOffset,
                                                         curveColor: self.curveColor,
                                                         accentColor: self.accentColor)
         } else {
@@ -343,10 +360,12 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
     }
     
     private func updateLabelsLayout() {
-        self.topLabel.text = String("\(Int(round(self.topSlider.value)))%")
-        self.bottomLabel.text = String("\(Int(round(self.bottomSlider.value)))%")
-        self.leftLabel.text = String("\(Int(round(self.leftSlider.value * 60.0)))f")
-        self.rightLabel.text = String("\(Int(round(self.rightSlider.value * 60.0)))f")
+        guard let boundsSliderMaxValue = self.boundsSliderMaxValue else { return }
+        
+        self.topLabel.text = String(format: "%.0f%", self.topSlider.value * 100.0)
+        self.bottomLabel.text = String(format: "%.0f%", self.bottomSlider.value * 100.0)
+        self.leftLabel.text = String(format: "%.0ff", self.leftSlider.value * Float(boundsSliderMaxValue))
+        self.rightLabel.text = String(format: "%.0ff", self.rightSlider.value * Float(boundsSliderMaxValue))
         
         self.topLabel.sizeToFit()
         self.bottomLabel.sizeToFit()
@@ -355,36 +374,45 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
         
         let topThumbRect = self.topSlider.getThumbRect(self.view)
         self.topLabel.center = topThumbRect.center.offsetBy(dx: CGFloat.zero,
-                                                         dy: -((transfromSliderKnobSize.height / 2.0) + (self.topLabel.frame.height / 2.0) + labelsOffset))
+                                                            dy: -((controlSliderKnobSize.height / 2.0) + (self.topLabel.frame.height / 2.0) + labelsOffset))
         
         let bottomThumbRect = self.bottomSlider.getThumbRect(self.view)
         self.bottomLabel.center = bottomThumbRect.center.offsetBy(dx: CGFloat.zero,
-                                                            dy: (transfromSliderKnobSize.height / 2.0) + (self.bottomLabel.frame.height / 2.0) + labelsOffset)
+                                                                  dy: (controlSliderKnobSize.height / 2.0) + (self.bottomLabel.frame.height / 2.0) + labelsOffset)
         
         let leftThumbRect = self.leftSlider.getThumbRect(self.view)
-        let leftLabelOffset = (boundSliderKnobSize.width / 2.0) + (self.leftLabel.frame.width / 2.0) + labelsOffset
+        let leftLabelOffset = (offsetSliderKnobSize.width / 2.0) + (self.leftLabel.frame.width / 2.0) + labelsOffset
         self.leftLabel.center = leftThumbRect.center.offsetBy(dx: leftLabelOffset, dy: CGFloat.zero)
         
         let rightThumbRect = self.rightSlider.getThumbRect(self.view)
         let labelWithOffset = self.rightLabel.frame.width + labelsOffset
-        let isRightSide = self.rightSlider.frame.maxX - (rightThumbRect.center.x + (boundSliderKnobSize.width / 2.0)) > labelWithOffset
-        let rightLabelOffset = (boundSliderKnobSize.width / 2.0) + (self.rightLabel.frame.width / 2.0) + labelsOffset
+        let isRightSide = self.rightSlider.frame.maxX - (rightThumbRect.center.x + (offsetSliderKnobSize.width / 2.0)) > labelWithOffset
+        let rightLabelOffset = (offsetSliderKnobSize.width / 2.0) + (self.rightLabel.frame.width / 2.0) + labelsOffset
         self.rightLabel.center = rightThumbRect.center.offsetBy(dx: (isRightSide ? rightLabelOffset : -rightLabelOffset), dy: CGFloat.zero)
         
         if self.rightLabel.frame.minX - self.leftLabel.frame.maxX <= labelsGap {
             self.leftLabel.center = leftThumbRect.center.offsetBy(dx: -leftLabelOffset, dy: CGFloat.zero)
         }
     }
-        
-    public func updateLayout(presentationData: ItemListPresentationData? = nil) {
+    
+    public func updateLayout(presentationData: ItemListPresentationData? = nil, duration: ChatAnimationDuration, timingFunction: ChatAnimationTimingFunction) {
         guard let presentationData = presentationData ?? self.presentationData,
-              let transfromSliderKnobImage = transfromSliderKnobImage,
-              let boundSliderKnobImage = boundSliderKnobImage else {
+              let controlSliderKnobImage = controlSliderKnobImage,
+              let offsetSliderKnobImage = offsetSliderKnobImage else {
             return
         }
         
         self.presentationData = presentationData
+        self.duration = duration
+        self.timingFunction = timingFunction
+        
         let size = self.bounds.size
+        
+        self.boundsSliderMaxValue = duration.maxValue
+        self.leftSlider.value = Float(timingFunction.startPoint.x)
+        self.rightSlider.value = Float(timingFunction.endPoint.x)
+        self.bottomSlider.value = Float(timingFunction.controlPoint1.x)
+        self.topSlider.value = Float(1.0 - timingFunction.controlPoint2.x)
         
         // Update colors
         self.curveColor = presentationData.theme.list.disclosureArrowColor.withAlphaComponent(0.5)
@@ -419,16 +447,16 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
             self.view.insertSubview(self.rightLabel, at: 7)
         }
         
-        let transformSliderHeight: CGFloat = transfromSliderKnobImage.size.height
-        let boundSliderHeight: CGFloat = boundSliderKnobImage.size.height
+        let transformSliderHeight: CGFloat = controlSliderKnobImage.size.height
+        let offsetSliderHeight: CGFloat = offsetSliderKnobImage.size.height
         self.topSlider.frame = CGRect(origin: CGPoint(x: contentInsets.left, y: contentInsets.top),
                                       size: CGSize(width: size.width - contentInsets.left - contentInsets.right, height: transformSliderHeight))
         self.bottomSlider.frame = CGRect(origin: CGPoint(x: contentInsets.left, y: size.height - contentInsets.bottom - transformSliderHeight),
                                          size: CGSize(width: size.width - contentInsets.left - contentInsets.right, height: transformSliderHeight))
-        self.leftSlider.frame = CGRect(origin: CGPoint(x: contentInsets.left, y: size.height / 2.0 - boundSliderHeight / 2.0),
-                                       size: CGSize(width: size.width - contentInsets.left - contentInsets.right, height: boundSliderHeight))
-        self.rightSlider.frame = CGRect(origin: CGPoint(x: contentInsets.left, y: size.height / 2.0 - boundSliderHeight / 2.0),
-                                        size: CGSize(width: size.width - contentInsets.left - contentInsets.right, height: boundSliderHeight))
+        self.leftSlider.frame = CGRect(origin: CGPoint(x: contentInsets.left, y: size.height / 2.0 - offsetSliderHeight / 2.0),
+                                       size: CGSize(width: size.width - contentInsets.left - contentInsets.right, height: offsetSliderHeight))
+        self.rightSlider.frame = CGRect(origin: CGPoint(x: contentInsets.left, y: size.height / 2.0 - offsetSliderHeight / 2.0),
+                                        size: CGSize(width: size.width - contentInsets.left - contentInsets.right, height: offsetSliderHeight))
         
         var topLeft = topSlider.getThumbRectMax(self.view).origin
         var topRight = topSlider.getThumbRectMin(self.view).topRight
@@ -460,15 +488,16 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
         
         let topControlPointOffset = parameters.topControlPointOffset
         let bottomControlPointOffset = parameters.bottomControlPointOffset
-        let leftCapOffset = parameters.leftCapOffset
-        let rightCapOffset = parameters.rightCapOffset
-        
+        let leftBoundsOffset = parameters.leftBoundsOffset
+        let rightBoundsOffset = parameters.rightBoundsOffset
+                
         var topLeft = CGPoint(x: rect.minX, y: rect.minY)
         var topRight = CGPoint(x: rect.maxX, y: rect.minY)
         var bottomLeft = CGPoint(x: rect.minX, y: rect.maxY)
         var bottomRight = CGPoint(x: rect.maxX, y: rect.maxY)
-        var topLeftControl = CGPoint.zero
-        var bottomRightControl = CGPoint.zero
+        
+        var controlPoint1 = CGPoint.zero
+        var controlPoint2 = CGPoint.zero
         
         context.setLineWidth(lineThickness)
         context.setLineCap(.round)
@@ -485,19 +514,19 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
             context.move(to: bottomLeft)
             context.addLine(to: bottomRight)
             
-            topLeft = CGPoint(x: rect.minX + leftCapOffset, y: rect.minY)
-            topRight = CGPoint(x: rect.maxX - rightCapOffset, y: rect.minY)
-            bottomLeft = CGPoint(x: rect.minX + leftCapOffset, y: rect.maxY)
-            bottomRight = CGPoint(x: rect.maxX - rightCapOffset, y: rect.maxY)
+            topLeft = CGPoint(x: rect.minX + leftBoundsOffset, y: rect.minY)
+            topRight = CGPoint(x: rect.maxX - rightBoundsOffset, y: rect.minY)
+            bottomLeft = CGPoint(x: rect.minX + leftBoundsOffset, y: rect.maxY)
+            bottomRight = CGPoint(x: rect.maxX - rightBoundsOffset, y: rect.maxY)
             
-            topLeftControl = CGPoint(x: topLeft.x + topControlPointOffset, y: topLeft.y)
-            bottomRightControl = CGPoint(x: bottomRight.x - bottomControlPointOffset, y: bottomRight.y)
+            controlPoint1 = CGPoint(x: bottomRight.x - bottomControlPointOffset, y: bottomRight.y)
+            controlPoint2 = CGPoint(x: topLeft.x + topControlPointOffset, y: topLeft.y)
             
             let curvePath = UIBezierPath()
             curvePath.move(to: bottomLeft)
             curvePath.addCurve(to: topRight,
-                               controlPoint1: bottomRightControl,
-                               controlPoint2: topLeftControl)
+                               controlPoint1: controlPoint1,
+                               controlPoint2: controlPoint2)
             context.addPath(curvePath.cgPath)
             
             context.strokePath()
@@ -509,11 +538,11 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
             
             context.beginPath()
             
-            context.move(to: topLeftControl)
+            context.move(to: controlPoint2)
             context.addLine(to: topRight)
             
             context.move(to: bottomLeft)
-            context.addLine(to: bottomRightControl)
+            context.addLine(to: controlPoint1)
             
             context.strokePath()
         }
@@ -579,7 +608,7 @@ class ChatAnimationSettingsCurveItemNode: ListViewItemNode, ItemListItemNode {
         
         super.init(layerBacked: false, dynamicBounce: false)
     }
-    
+        
     func asyncLayout() -> (_ item: ChatAnimationSettingsCurveItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
         return { item, params, neighbors in
             let contentSize = CGSize(width: params.width, height: contentHeight)
@@ -587,15 +616,15 @@ class ChatAnimationSettingsCurveItemNode: ListViewItemNode, ItemListItemNode {
             let separatorHeight = UIScreenPixel
             let layout = ListViewItemNodeLayout(contentSize: contentSize, insets: UIEdgeInsets.zero)
             
-            return (layout, { [weak self] in
-                guard let sself = self else { return }
-                sself.item = item
+            return (layout, { [weak self, weak item] in
+                guard let sself = self, let sItem = item else { return }
+                sself.item = sItem
                 sself.layoutParams = params
                 
                 // update colors
-                sself.backgroundNode.backgroundColor = item.presentationData.theme.list.itemBlocksBackgroundColor
-                sself.topStripeNode.backgroundColor = item.presentationData.theme.list.itemBlocksSeparatorColor
-                sself.bottomStripeNode.backgroundColor = item.presentationData.theme.list.itemBlocksSeparatorColor
+                sself.backgroundNode.backgroundColor = sItem.presentationData.theme.list.itemBlocksBackgroundColor
+                sself.topStripeNode.backgroundColor = sItem.presentationData.theme.list.itemBlocksSeparatorColor
+                sself.bottomStripeNode.backgroundColor = sItem.presentationData.theme.list.itemBlocksSeparatorColor
                 
                 if sself.backgroundNode.supernode == nil {
                     sself.insertSubnode(sself.backgroundNode, at: 0)
@@ -617,37 +646,37 @@ class ChatAnimationSettingsCurveItemNode: ListViewItemNode, ItemListItemNode {
                 var hasTopCorners = false
                 var hasBottomCorners = false
                 switch neighbors.top {
-                    case .sameSection(false):
-                        sself.topStripeNode.isHidden = true
-                    default:
-                        hasTopCorners = true
-                        sself.topStripeNode.isHidden = hasCorners
+                case .sameSection(false):
+                    sself.topStripeNode.isHidden = true
+                default:
+                    hasTopCorners = true
+                    sself.topStripeNode.isHidden = hasCorners
                 }
                 let bottomStripeInset: CGFloat
                 let bottomStripeOffset: CGFloat
                 switch neighbors.bottom {
-                    case .sameSection(false):
-                        bottomStripeInset = params.leftInset + 16.0
-                        bottomStripeOffset = -separatorHeight
-                    default:
-                        bottomStripeInset = 0.0
-                        bottomStripeOffset = 0.0
-                        hasBottomCorners = true
-                        sself.bottomStripeNode.isHidden = hasCorners
+                case .sameSection(false):
+                    bottomStripeInset = params.leftInset + 16.0
+                    bottomStripeOffset = -separatorHeight
+                default:
+                    bottomStripeInset = 0.0
+                    bottomStripeOffset = 0.0
+                    hasBottomCorners = true
+                    sself.bottomStripeNode.isHidden = hasCorners
                 }
                 
-                sself.maskNode.image = hasCorners ? PresentationResourcesItemList.cornersImage(item.presentationData.theme, top: hasTopCorners, bottom: hasBottomCorners) : nil
+                sself.maskNode.image = hasCorners ? PresentationResourcesItemList.cornersImage(sItem.presentationData.theme, top: hasTopCorners, bottom: hasBottomCorners) : nil
                 
                 sself.backgroundNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)),
-                                                         size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
+                                                    size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
                 sself.topStripeNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)),
-                                                        size: CGSize(width: layout.size.width, height: separatorHeight))
+                                                   size: CGSize(width: layout.size.width, height: separatorHeight))
                 sself.bottomStripeNode.frame = CGRect(origin: CGPoint(x: bottomStripeInset, y: contentSize.height + bottomStripeOffset),
                                                       size: CGSize(width: layout.size.width - bottomStripeInset, height: separatorHeight))
                 sself.maskNode.frame = sself.backgroundNode.frame.insetBy(dx: params.leftInset, dy: 0.0)
                 sself.curveNode.frame = sself.maskNode.frame
                 
-                sself.curveNode.updateLayout(presentationData: item.presentationData)
+                sself.curveNode.updateLayout(presentationData: sItem.presentationData, duration: sItem.duration, timingFunction: sItem.timingFunction)
             })
         }
     }

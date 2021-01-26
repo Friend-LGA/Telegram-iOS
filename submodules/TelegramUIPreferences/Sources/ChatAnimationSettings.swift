@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 public enum ChatAnimationType: String, Codable {
     case small = "Small Message"
@@ -36,23 +37,166 @@ public enum ChatAnimationDuration: Double, Codable {
             return "60f (1 sec)"
         }
     }
-}
-
-public struct ChatAnimationSettingsCommon: Codable {
-    public let type: ChatAnimationType
-    public let duration: ChatAnimationDuration
     
-    static func initDefault(_ type: ChatAnimationType) -> ChatAnimationSettingsCommon {
-        return ChatAnimationSettingsCommon(type: type, duration: ChatAnimationDuration.medium)
+    public var maxValue: CGFloat {
+        switch self {
+        case .fast:
+            return 30.0
+        case .medium:
+            return 45.0
+        case .slow:
+            return 60.0
+        }
     }
 }
 
-public struct ChatAnimationSettingsEmoji: Codable {
-    public let type: ChatAnimationType
-    public let duration: ChatAnimationDuration
+final public class ChatAnimationTimingFunction: Codable {
+    public var startPoint: CGPoint
+    public var endPoint: CGPoint
+    public var controlPoint1: CGPoint
+    public var controlPoint2: CGPoint
     
-    static func initDefault() -> ChatAnimationSettingsEmoji {
-        return ChatAnimationSettingsEmoji(type: ChatAnimationType.emoji, duration: ChatAnimationDuration.medium)
+    init(startPoint: CGPoint = CGPoint.zero,
+         endPoint: CGPoint = CGPoint(x: 1.0, y: 1.0),
+         controlPoint1: CGPoint = CGPoint(x: 1.0, y: 0.0),
+         controlPoint2: CGPoint = CGPoint(x: 0.0, y: 1.0)) {
+        self.startPoint = startPoint
+        self.endPoint = endPoint
+        self.controlPoint1 = controlPoint1
+        self.controlPoint2 = controlPoint2
+    }
+    
+    public func restoreDefaults() {
+        self.update(from: ChatAnimationTimingFunction())
+    }
+    
+    public func update(from other: ChatAnimationTimingFunction) {
+        self.startPoint = other.startPoint
+        self.endPoint = other.endPoint
+        self.controlPoint1 = other.controlPoint1
+        self.controlPoint2 = other.controlPoint2
+    }
+}
+
+public protocol ChatAnimationSettings: class {
+    var type: ChatAnimationType { get }
+    var duration: ChatAnimationDuration { get set }
+}
+
+final public class ChatAnimationSettingsCommon: ChatAnimationSettings, Codable {
+    public let type: ChatAnimationType
+    public var duration: ChatAnimationDuration
+    public var yPositionFunc: ChatAnimationTimingFunction
+    public var xPositionFunc: ChatAnimationTimingFunction
+    public var bubbleShapeFunc: ChatAnimationTimingFunction
+    public var textPositionFunc: ChatAnimationTimingFunction
+    public var colorChangeFunc: ChatAnimationTimingFunction
+    public var timeAppearsFunc: ChatAnimationTimingFunction
+    
+    init(_ type: ChatAnimationType,
+         duration: ChatAnimationDuration = ChatAnimationDuration.medium,
+         yPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
+         xPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
+         bubbleShapeFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
+         textPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
+         colorChangeFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
+         timeAppearsFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction()) {
+        self.type = type
+        self.duration = duration
+        self.yPositionFunc = yPositionFunc
+        self.xPositionFunc = xPositionFunc
+        self.bubbleShapeFunc = bubbleShapeFunc
+        self.textPositionFunc = textPositionFunc
+        self.colorChangeFunc = colorChangeFunc
+        self.timeAppearsFunc = timeAppearsFunc
+    }
+    
+    public func restoreDefaults() {
+        self.update(from: ChatAnimationSettingsCommon(self.type))
+    }
+    
+    public func update(from other: ChatAnimationSettingsCommon) {
+        self.duration = other.duration
+        self.yPositionFunc.update(from: other.yPositionFunc)
+        self.xPositionFunc.update(from: other.xPositionFunc)
+        self.bubbleShapeFunc.update(from: other.bubbleShapeFunc)
+        self.textPositionFunc.update(from: other.textPositionFunc)
+        self.colorChangeFunc.update(from: other.colorChangeFunc)
+        self.timeAppearsFunc.update(from: other.timeAppearsFunc)
+    }
+    
+    public func generateJSONData() -> (data: Data?, error: Error?) {
+        let encoder = JSONEncoder()
+        do {
+            let data = try encoder.encode(self)
+            return (data, nil)
+        } catch let error {
+            return (nil, error)
+        }
+    }
+    
+    static public func decodeJSON(_ data: Data) -> (result: ChatAnimationSettingsCommon?, error: Error?) {
+        do {
+            let decoder = JSONDecoder()
+            let result = try decoder.decode(self, from: data)
+            return (result, nil)
+        } catch let error {
+            return (nil, error)
+        }
+    }
+}
+
+final public class ChatAnimationSettingsEmoji: ChatAnimationSettings, Codable {
+    public let type: ChatAnimationType
+    public var duration: ChatAnimationDuration
+    public var yPositionFunc: ChatAnimationTimingFunction
+    public var xPositionFunc: ChatAnimationTimingFunction
+    public var emojiScaleFunc: ChatAnimationTimingFunction
+    public var timeAppearsFunc: ChatAnimationTimingFunction
+    
+    init(duration: ChatAnimationDuration = ChatAnimationDuration.medium,
+         yPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
+         xPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
+         emojiScaleFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
+         timeAppearsFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction()) {
+        self.type = ChatAnimationType.emoji
+        self.duration = duration
+        self.yPositionFunc = yPositionFunc
+        self.xPositionFunc = xPositionFunc
+        self.emojiScaleFunc = emojiScaleFunc
+        self.timeAppearsFunc = timeAppearsFunc
+    }
+    
+    public func restoreDefaults() {
+        self.update(from: ChatAnimationSettingsEmoji())
+    }
+    
+    public func update(from other: ChatAnimationSettingsEmoji) {
+        self.duration = other.duration
+        self.yPositionFunc.update(from: other.yPositionFunc)
+        self.xPositionFunc.update(from: other.xPositionFunc)
+        self.emojiScaleFunc.update(from: other.emojiScaleFunc)
+        self.timeAppearsFunc.update(from: other.timeAppearsFunc)
+    }
+    
+    public func generateJSONData() -> (data: Data?, error: Error?) {
+        let encoder = JSONEncoder()
+        do {
+            let data = try encoder.encode(self)
+            return (data, nil)
+        } catch let error {
+            return (nil, error)
+        }
+    }
+    
+    static public func decodeJSON(_ data: Data) -> (result: ChatAnimationSettingsEmoji?, error: Error?) {
+        do {
+            let decoder = JSONDecoder()
+            let result = try decoder.decode(self, from: data)
+            return (result, nil)
+        } catch let error {
+            return (nil, error)
+        }
     }
 }
 
@@ -65,216 +209,160 @@ final public class ChatAnimationSettingsManager: Codable {
     static private let voiceSettingsKey = "ChatAnimationSettingsForVoiceType"
     static private let videoSettingsKey = "ChatAnimationSettingsForVideoType"
     
-    static private var _smallSettings: ChatAnimationSettingsCommon?
-    static private var _bigSettings: ChatAnimationSettingsCommon?
-    static private var _linkSettings: ChatAnimationSettingsCommon?
-    static private var _emojiSettings: ChatAnimationSettingsEmoji?
-    static private var _stickerSettings: ChatAnimationSettingsCommon?
-    static private var _voiceSettings: ChatAnimationSettingsCommon?
-    static private var _videoSettings: ChatAnimationSettingsCommon?
+    static private func keyForType(_ type: ChatAnimationType) -> String {
+        switch type {
+        case .small:
+            return smallSettingsKey
+        case .big:
+            return bigSettingsKey
+        case .link:
+            return linkSettingsKey
+        case .emoji:
+            return emojiSettingsKey
+        case .sticker:
+            return stickerSettingsKey
+        case .voice:
+            return voiceSettingsKey
+        case .video:
+            return videoSettingsKey
+        }
+    }
     
-    private var smallSettings = ChatAnimationSettingsManager.smallSettings
-    private var bigSettings = ChatAnimationSettingsManager.bigSettings
-    private var linkSettings = ChatAnimationSettingsManager.linkSettings
-    private var emojiSettings = ChatAnimationSettingsManager.emojiSettings
-    private var stickerSettings = ChatAnimationSettingsManager.stickerSettings
-    private var voiceSettings = ChatAnimationSettingsManager.voiceSettings
-    private var videoSettings = ChatAnimationSettingsManager.videoSettings
+    static private func getCommonSettings(for type: ChatAnimationType) -> ChatAnimationSettingsCommon {
+        if let settingsData = UserDefaults.standard.object(forKey: self.keyForType(type)) as? Data,
+           let settings = ChatAnimationSettingsCommon.decodeJSON(settingsData).result {
+            return settings
+        }
+        
+        return ChatAnimationSettingsCommon(type)
+    }
+        
+    static private func getEmojiSettings() -> ChatAnimationSettingsEmoji {
+        if let settingsData = UserDefaults.standard.object(forKey: self.keyForType(.emoji)) as? Data,
+           let settings = ChatAnimationSettingsEmoji.decodeJSON(settingsData).result {
+            return settings
+        }
+        
+        return ChatAnimationSettingsEmoji()
+    }
+    
+    public var smallSettings = ChatAnimationSettingsManager.getCommonSettings(for: .small)
+    public var bigSettings = ChatAnimationSettingsManager.getCommonSettings(for: .big)
+    public var linkSettings = ChatAnimationSettingsManager.getCommonSettings(for: .link)
+    public var emojiSettings = ChatAnimationSettingsManager.getEmojiSettings()
+    public var stickerSettings = ChatAnimationSettingsManager.getCommonSettings(for: .sticker)
+    public var voiceSettings = ChatAnimationSettingsManager.getCommonSettings(for: .voice)
+    public var videoSettings = ChatAnimationSettingsManager.getCommonSettings(for: .video)
     
     public init() {}
-        
-    static public var smallSettings: ChatAnimationSettingsCommon {
-        if let settings = self._smallSettings {
-            return settings
+    
+    public func getSettings(for type: ChatAnimationType) -> ChatAnimationSettings {
+        switch type {
+        case .small:
+            return self.smallSettings
+        case .big:
+            return self.bigSettings
+        case .link:
+            return self.linkSettings
+        case .emoji:
+            return self.emojiSettings
+        case .sticker:
+            return self.stickerSettings
+        case .voice:
+            return self.voiceSettings
+        case .video:
+            return self.videoSettings
         }
+    }
+     
+    public func applyChanges() {
         let defaults = UserDefaults.standard
-        if let settings = defaults.object(forKey: smallSettingsKey) as? ChatAnimationSettingsCommon {
-            self._smallSettings = settings
-        } else {
-            self._smallSettings = ChatAnimationSettingsCommon.initDefault(.small)
-        }
-        return self._smallSettings!
+        defaults.set(self.smallSettings.generateJSONData().data, forKey: ChatAnimationSettingsManager.smallSettingsKey)
+        defaults.set(self.bigSettings.generateJSONData().data, forKey: ChatAnimationSettingsManager.bigSettingsKey)
+        defaults.set(self.linkSettings.generateJSONData().data, forKey: ChatAnimationSettingsManager.linkSettingsKey)
+        defaults.set(self.emojiSettings.generateJSONData().data, forKey: ChatAnimationSettingsManager.emojiSettingsKey)
+        defaults.set(self.stickerSettings.generateJSONData().data, forKey: ChatAnimationSettingsManager.stickerSettingsKey)
+        defaults.set(self.voiceSettings.generateJSONData().data, forKey: ChatAnimationSettingsManager.voiceSettingsKey)
+        defaults.set(self.videoSettings.generateJSONData().data, forKey: ChatAnimationSettingsManager.videoSettingsKey)
     }
     
-    static public var bigSettings: ChatAnimationSettingsCommon {
-        if let settings = self._bigSettings {
-            return settings
-        }
-        let defaults = UserDefaults.standard
-        if let settings = defaults.object(forKey: bigSettingsKey) as? ChatAnimationSettingsCommon {
-            self._bigSettings = settings
-        } else {
-            self._bigSettings = ChatAnimationSettingsCommon.initDefault(.big)
-        }
-        return self._bigSettings!
-    }
-    
-    static public var linkSettings: ChatAnimationSettingsCommon {
-        if let settings = self._linkSettings {
-            return settings
-        }
-        let defaults = UserDefaults.standard
-        if let settings = defaults.object(forKey: linkSettingsKey) as? ChatAnimationSettingsCommon {
-            self._linkSettings = settings
-        } else {
-            self._linkSettings = ChatAnimationSettingsCommon.initDefault(.link)
-        }
-        return self._linkSettings!
-    }
-    
-    static public var emojiSettings: ChatAnimationSettingsEmoji {
-        if let settings = self._emojiSettings {
-            return settings
-        }
-        let defaults = UserDefaults.standard
-        if let settings = defaults.object(forKey: emojiSettingsKey) as? ChatAnimationSettingsEmoji {
-            self._emojiSettings = settings
-        } else {
-            self._emojiSettings = ChatAnimationSettingsEmoji.initDefault()
-        }
-        return self._emojiSettings!
-    }
-    
-    static public var stickerSettings: ChatAnimationSettingsCommon {
-        if let settings = self._stickerSettings {
-            return settings
-        }
-        let defaults = UserDefaults.standard
-        if let settings = defaults.object(forKey: stickerSettingsKey) as? ChatAnimationSettingsCommon {
-            self._stickerSettings = settings
-        } else {
-            self._stickerSettings = ChatAnimationSettingsCommon.initDefault(.sticker)
-        }
-        return self._stickerSettings!
-    }
-    
-    static public var voiceSettings: ChatAnimationSettingsCommon {
-        if let settings = self._voiceSettings {
-            return settings
-        }
-        let defaults = UserDefaults.standard
-        if let settings = defaults.object(forKey: voiceSettingsKey) as? ChatAnimationSettingsCommon {
-            self._voiceSettings = settings
-        } else {
-            self._voiceSettings = ChatAnimationSettingsCommon.initDefault(.voice)
-        }
-        return self._voiceSettings!
-    }
-    
-    static public var videoSettings: ChatAnimationSettingsCommon {
-        if let settings = self._videoSettings {
-            return settings
-        }
-        let defaults = UserDefaults.standard
-        if let settings = defaults.object(forKey: videoSettingsKey) as? ChatAnimationSettingsCommon {
-            self._videoSettings = settings
-        } else {
-            self._videoSettings = ChatAnimationSettingsCommon.initDefault(.video)
-        }
-        return self._videoSettings!
-    }
-        
-    static private func update() {
-        let defaults = UserDefaults.standard
-        defaults.set(self.smallSettings, forKey: self.smallSettingsKey)
-        defaults.set(self.bigSettings, forKey: self.bigSettingsKey)
-        defaults.set(self.linkSettings, forKey: self.linkSettingsKey)
-        defaults.set(self.emojiSettings, forKey: self.emojiSettingsKey)
-        defaults.set(self.stickerSettings, forKey: self.stickerSettingsKey)
-        defaults.set(self.voiceSettings, forKey: self.voiceSettingsKey)
-        defaults.set(self.videoSettings, forKey: self.videoSettingsKey)
-    }
-    
-    static private func update(_ settings: ChatAnimationSettingsManager, type: ChatAnimationType? = nil) {
-        self._smallSettings = settings.smallSettings
-        self._bigSettings = settings.bigSettings
-        self._linkSettings = settings.linkSettings
-        self._emojiSettings = settings.emojiSettings
-        self._stickerSettings = settings.stickerSettings
-        self._voiceSettings = settings.voiceSettings
-        self._videoSettings = settings.videoSettings
-        self.update()
-    }
-    
-    public func update(_ settings: ChatAnimationSettingsManager, type: ChatAnimationType? = nil) {
+    public func update(from other: ChatAnimationSettingsManager, type: ChatAnimationType? = nil) {
         if let type = type {
             switch type {
             case .small:
-                self.smallSettings = settings.smallSettings
+                self.smallSettings.update(from: other.smallSettings)
             case .big:
-                self.bigSettings = settings.bigSettings
+                self.bigSettings.update(from: other.bigSettings)
             case .link:
-                self.linkSettings = settings.linkSettings
+                self.linkSettings.update(from: other.linkSettings)
             case .emoji:
-                self.emojiSettings = settings.emojiSettings
+                self.emojiSettings.update(from: other.emojiSettings)
             case .sticker:
-                self.stickerSettings = settings.stickerSettings
+                self.stickerSettings.update(from: other.stickerSettings)
             case .voice:
-                self.voiceSettings = settings.voiceSettings
+                self.voiceSettings.update(from: other.voiceSettings)
             case .video:
-                self.videoSettings = settings.videoSettings
+                self.videoSettings.update(from: other.videoSettings)
             }
         } else {
-            self.smallSettings = settings.smallSettings
-            self.bigSettings = settings.bigSettings
-            self.linkSettings = settings.linkSettings
-            self.emojiSettings = settings.emojiSettings
-            self.stickerSettings = settings.stickerSettings
-            self.voiceSettings = settings.voiceSettings
-            self.videoSettings = settings.videoSettings
+            self.smallSettings.update(from: other.smallSettings)
+            self.bigSettings.update(from: other.bigSettings)
+            self.linkSettings.update(from: other.linkSettings)
+            self.emojiSettings.update(from: other.emojiSettings)
+            self.stickerSettings.update(from: other.stickerSettings)
+            self.voiceSettings.update(from: other.voiceSettings)
+            self.videoSettings.update(from: other.videoSettings)
         }
     }
     
-    public func restore(type: ChatAnimationType? = nil) {
+    public func restoreDefaults(type: ChatAnimationType? = nil) {
         if let type = type {
             switch type {
             case .small:
-                self.smallSettings = ChatAnimationSettingsCommon.initDefault(.small)
+                self.smallSettings.restoreDefaults()
             case .big:
-                self.bigSettings = ChatAnimationSettingsCommon.initDefault(.big)
+                self.bigSettings.restoreDefaults()
             case .link:
-                self.linkSettings = ChatAnimationSettingsCommon.initDefault(.link)
+                self.linkSettings.restoreDefaults()
             case .emoji:
-                self.emojiSettings = ChatAnimationSettingsEmoji.initDefault()
+                self.emojiSettings.restoreDefaults()
             case .sticker:
-                self.stickerSettings = ChatAnimationSettingsCommon.initDefault(.sticker)
+                self.stickerSettings.restoreDefaults()
             case .voice:
-                self.voiceSettings = ChatAnimationSettingsCommon.initDefault(.voice)
+                self.voiceSettings.restoreDefaults()
             case .video:
-                self.videoSettings = ChatAnimationSettingsCommon.initDefault(.video)
+                self.videoSettings.restoreDefaults()
             }
         } else {
-            self.smallSettings = ChatAnimationSettingsCommon.initDefault(.small)
-            self.bigSettings = ChatAnimationSettingsCommon.initDefault(.big)
-            self.linkSettings = ChatAnimationSettingsCommon.initDefault(.link)
-            self.emojiSettings = ChatAnimationSettingsEmoji.initDefault()
-            self.stickerSettings = ChatAnimationSettingsCommon.initDefault(.sticker)
-            self.voiceSettings = ChatAnimationSettingsCommon.initDefault(.voice)
-            self.videoSettings = ChatAnimationSettingsCommon.initDefault(.video)
+            self.smallSettings.restoreDefaults()
+            self.bigSettings.restoreDefaults()
+            self.linkSettings.restoreDefaults()
+            self.emojiSettings.restoreDefaults()
+            self.stickerSettings.restoreDefaults()
+            self.voiceSettings.restoreDefaults()
+            self.videoSettings.restoreDefaults()
         }
     }
     
-    static public func generateJSONData() -> (Data?, Error?) {
+    public func generateJSONData() -> (data: Data?, error: Error?) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        let settings = self.init()
-        
         do {
-            let data = try encoder.encode(settings)
+            let data = try encoder.encode(self)
             return (data, nil)
         } catch let error {
             return (nil, error)
         }
     }
     
-    static public func generateJSONString() -> (String?, Error?) {
+    public func generateJSONString() -> (result: String?, error: Error?) {
         let (jsonData, error) = self.generateJSONData()
         guard let data = jsonData else { return (nil, error) }
         let string = String(data: data, encoding: .utf8)
         return (string, nil)
     }
     
-    static public func generateJSONFile() -> (URL?, Error?) {
+    public func generateJSONFile() -> (url: URL?, error: Error?) {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
         guard let path = documents?.appendingPathComponent("TelegramChatAnimationSettings.tgios-anim") else {
             return (nil, nil) // TODO: Should return custom error
@@ -291,7 +379,7 @@ final public class ChatAnimationSettingsManager: Codable {
         }
     }
     
-    static public func decodeJSON(_ data: Data) -> (ChatAnimationSettingsManager?, Error?) {
+    static public func decodeJSON(_ data: Data) -> (result: ChatAnimationSettingsManager?, error: Error?) {
         do {
             let decoder = JSONDecoder()
             let settings = try decoder.decode(self, from: data)

@@ -10,6 +10,8 @@ import TelegramPresentationData
 import TelegramUIPreferences
 import PresentationDataUtils
 
+private var currentAnimationType = ChatAnimationType.small
+
 private final class ChatAnimationSettingsControllerArguments {
     let openType: () -> Void
     let openDuration: () -> Void
@@ -37,6 +39,7 @@ private enum ChatAnimationSettingsControllerSection: Int32 {
     case bubbleShape
     case textPosition
     case colorChange
+    case emojiScale
     case timeAppears
 }
 
@@ -56,28 +59,32 @@ private enum ChatAnimationSettingsControllerEntryId: Int32 {
     case textPosition
     case colorChangeHeader
     case colorChange
+    case emojiScaleHeader
+    case emojiScale
     case timeAppearsHeader
     case timeAppears
 }
 
 private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
-    case type(ChatAnimationType)
-    case duration(ChatAnimationDuration)
+    case type(ChatAnimationType, Int)
+    case duration(ChatAnimationDuration, Int)
     case share
     case importParams
     case restore
     case yPositionHeader
-    case yPosition
+    case yPosition(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
     case xPositionHeader
-    case xPosition
+    case xPosition(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
     case bubbleShapeHeader
-    case bubbleShape
+    case bubbleShape(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
     case textPositionHeader
-    case textPosition
+    case textPosition(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
     case colorChangeHeader
-    case colorChange
+    case colorChange(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
+    case emojiScaleHeader
+    case emojiScale(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
     case timeAppearsHeader
-    case timeAppears
+    case timeAppears(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
     
     var section: ItemListSectionId {
         switch self {
@@ -93,6 +100,8 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
             return ChatAnimationSettingsControllerSection.textPosition.rawValue
         case .colorChangeHeader, .colorChange:
             return ChatAnimationSettingsControllerSection.colorChange.rawValue
+        case .emojiScaleHeader, .emojiScale:
+            return ChatAnimationSettingsControllerSection.emojiScale.rawValue
         case .timeAppearsHeader, .timeAppears:
             return ChatAnimationSettingsControllerSection.timeAppears.rawValue
         }
@@ -130,6 +139,10 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
             return .colorChangeHeader
         case .colorChange:
             return .colorChange
+        case .emojiScaleHeader:
+            return .emojiScaleHeader
+        case .emojiScale:
+            return .emojiScale
         case .timeAppearsHeader:
             return .timeAppearsHeader
         case .timeAppears:
@@ -137,17 +150,64 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
         }
     }
     
-    static func <(lhs: ChatAnimationSettingsControllerEntry, rhs: ChatAnimationSettingsControllerEntry) -> Bool {
+    var dirtyCounter: Int {
+        switch self {
+        case let .type(_, value):
+            return value
+        case let .duration(_, value):
+            return value
+        case .share:
+            return 0
+        case .importParams:
+            return 0
+        case .restore:
+            return 0
+        case .yPositionHeader:
+            return 0
+        case let .yPosition(_, _, value):
+            return value
+        case .xPositionHeader:
+            return 0
+        case let .xPosition(_, _, value):
+            return value
+        case .bubbleShapeHeader:
+            return 0
+        case let .bubbleShape(_, _, value):
+            return value
+        case .textPositionHeader:
+            return 0
+        case let .textPosition(_, _, value):
+            return value
+        case .colorChangeHeader:
+            return 0
+        case let .colorChange(_, _, value):
+            return value
+        case .emojiScaleHeader:
+            return 0
+        case let .emojiScale(_, _, value):
+            return value
+        case .timeAppearsHeader:
+            return 0
+        case let .timeAppears(_, _, value):
+            return value
+        }
+    }
+    
+    static func == (lhs: ChatAnimationSettingsControllerEntry, rhs: ChatAnimationSettingsControllerEntry) -> Bool {
+        return lhs.dirtyCounter == rhs.dirtyCounter
+    }
+    
+    static func < (lhs: ChatAnimationSettingsControllerEntry, rhs: ChatAnimationSettingsControllerEntry) -> Bool {
         return lhs.stableId.rawValue < rhs.stableId.rawValue
     }
     
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! ChatAnimationSettingsControllerArguments
         switch self {
-        case let .type(value):
+        case let .type(value, _):
             return ItemListDisclosureItem(presentationData: presentationData, title: "Animation Type", label: value.rawValue, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.openType()
             })
-        case let .duration(value):
+        case let .duration(value, _):
             return ItemListDisclosureItem(presentationData: presentationData, title: "Duration", label: value.description, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: { arguments.openDuration()
             })
         case .share:
@@ -164,70 +224,102 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
             })
         case .yPositionHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "Y POSITION", sectionId: self.section)
-        case .yPosition:
-            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
         case .xPositionHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "X POSITION", sectionId: self.section)
-        case .xPosition:
-            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
         case .bubbleShapeHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "BUBBLE SHAPE", sectionId: self.section)
-        case .bubbleShape:
-            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
         case .textPositionHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "TEXT POSITION", sectionId: self.section)
-        case .textPosition:
-            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
         case .colorChangeHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "COLOR CHANGE", sectionId: self.section)
-        case .colorChange:
-            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
+        case .emojiScaleHeader:
+            return ItemListSectionHeaderItem(presentationData: presentationData, text: "EMOJI SCALE", sectionId: self.section)
         case .timeAppearsHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "TIME APPEARS", sectionId: self.section)
-        case .timeAppears:
-            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section)
+        case let .yPosition(duration, timingFunction, _),
+             let .xPosition(duration, timingFunction, _),
+             let .bubbleShape(duration, timingFunction, _),
+             let .textPosition(duration, timingFunction, _),
+             let .colorChange(duration, timingFunction, _),
+             let .emojiScale(duration, timingFunction, _),
+             let .timeAppears(duration, timingFunction, _):
+            return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section, duration: duration, timingFunction: timingFunction)
         }
     }
 }
 
-private func createChatAnimationSettingsControllerEntries() -> [ChatAnimationSettingsControllerEntry] {
-    let entries: [ChatAnimationSettingsControllerEntry] = [
-        .type(ChatAnimationType.small),
-        .duration(ChatAnimationDuration.medium),
+private struct ChatAnimationSettingsControllerState: Equatable {
+    // to force pipeline to update
+    var dirtyCounter = 0
+    
+    static func == (lhs: ChatAnimationSettingsControllerState, rhs: ChatAnimationSettingsControllerState) -> Bool {
+        return lhs.dirtyCounter == rhs.dirtyCounter
+    }
+}
+
+private func createChatAnimationSettingsControllerEntries(_ state: ChatAnimationSettingsControllerState, settings: ChatAnimationSettings) -> [ChatAnimationSettingsControllerEntry] {
+    var entries: [ChatAnimationSettingsControllerEntry] = [
+        .type(settings.type, state.dirtyCounter),
+        .duration(settings.duration, state.dirtyCounter),
         .share,
         .importParams,
         .restore,
-        .yPositionHeader,
-        .yPosition,
-        .xPositionHeader,
-        .xPosition,
-        .bubbleShapeHeader,
-        .bubbleShape,
-        .textPositionHeader,
-        .textPosition,
-        .colorChangeHeader,
-        .colorChange,
-        .timeAppearsHeader,
-        .timeAppears
     ]
+    
+    if let settings = settings as? ChatAnimationSettingsCommon {
+        entries += [
+            .yPositionHeader,
+            .yPosition(settings.duration, settings.yPositionFunc, state.dirtyCounter),
+            .xPositionHeader,
+            .xPosition(settings.duration, settings.xPositionFunc, state.dirtyCounter),
+            .bubbleShapeHeader,
+            .bubbleShape(settings.duration, settings.bubbleShapeFunc, state.dirtyCounter),
+            .textPositionHeader,
+            .textPosition(settings.duration, settings.textPositionFunc, state.dirtyCounter),
+            .colorChangeHeader,
+            .colorChange(settings.duration, settings.colorChangeFunc, state.dirtyCounter),
+            .timeAppearsHeader,
+            .timeAppears(settings.duration, settings.timeAppearsFunc, state.dirtyCounter)
+        ]
+    } else if let settings = settings as? ChatAnimationSettingsEmoji {
+        entries += [
+            .yPositionHeader,
+            .yPosition(settings.duration, settings.yPositionFunc, state.dirtyCounter),
+            .xPositionHeader,
+            .xPosition(settings.duration, settings.xPositionFunc, state.dirtyCounter),
+            .emojiScaleHeader,
+            .emojiScale(settings.duration, settings.emojiScaleFunc, state.dirtyCounter),
+            .timeAppearsHeader,
+            .timeAppears(settings.duration, settings.timeAppearsFunc, state.dirtyCounter)
+        ]
+    }
     return entries
 }
 
 public func createChatAnimationSettingsController(context: AccountContext) -> ViewController {
+    let settingsManager = ChatAnimationSettingsManager()
+        
+    let initialState = ChatAnimationSettingsControllerState()
+    let statePromise = ValuePromise(initialState, ignoreRepeated: true)
+    let stateValue = Atomic(value: initialState)
+    let updateState: ((ChatAnimationSettingsControllerState) -> ChatAnimationSettingsControllerState) -> Void = { f in
+        statePromise.set(stateValue.modify { f($0) })
+    }
+        
     var dismissImpl: (() -> Void)?
+    var reloadImpl: (() -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
     var presentControllerImpl: ((ViewController) -> Void)?
     var presentActivityControllerImpl: ((UIActivityViewController) -> Void)?
-    let chatAnimationSettings = ChatAnimationSettingsManager()
-    let animationType = ChatAnimationType.small
-    
-    let signal = context.sharedContext.presentationData
-        |> map { presentationData -> (ItemListControllerState, (ItemListNodeState, Any)) in
+        
+    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get() |> deliverOnMainQueue)
+        |> map { presentationData, state -> (ItemListControllerState, (ItemListNodeState, Any)) in
             let leftNavigationButton = ItemListNavigationButton(content: .text(presentationData.strings.Common_Cancel), style: .regular, enabled: true, action: {
                 dismissImpl?()
             })
             
             let rightNavigationButton = ItemListNavigationButton(content: .text("Apply"), style: .bold, enabled: true, action: {
+                settingsManager.applyChanges()
                 dismissImpl?()
             })
                         
@@ -239,11 +331,15 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
                                                           animateChanges: false)
             
             let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData),
-                                              entries: createChatAnimationSettingsControllerEntries(),
-                                              style: .blocks)
+                                              entries: createChatAnimationSettingsControllerEntries(state, settings: settingsManager.getSettings(for: currentAnimationType)),
+                                              style: .blocks,
+                                              animateChanges: false)
             
             let arguments = ChatAnimationSettingsControllerArguments(openType: {
-                pushControllerImpl?(createChatAnimationSettingsTypeController(context: context))
+                pushControllerImpl?(createChatAnimationSettingsTypeController(context: context, onChange: { type in
+                    currentAnimationType = type
+                    reloadImpl?()
+                }))
             },
             openDuration: {
                 let actionSheet = ActionSheetController(presentationData: presentationData)
@@ -251,12 +347,18 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
                     ActionSheetItemGroup(items: [
                         ActionSheetTextItem(title: "Duration"),
                         ActionSheetButtonItem(title: ChatAnimationDuration.fast.description, color: .accent, action: { [weak actionSheet] in
+                            settingsManager.getSettings(for: currentAnimationType).duration = ChatAnimationDuration.fast
+                            reloadImpl?()
                             actionSheet?.dismissAnimated()
                         }),
                         ActionSheetButtonItem(title: ChatAnimationDuration.medium.description, color: .accent, action: { [weak actionSheet] in
+                            settingsManager.getSettings(for: currentAnimationType).duration = ChatAnimationDuration.medium
+                            reloadImpl?()
                             actionSheet?.dismissAnimated()
                         }),
                         ActionSheetButtonItem(title: ChatAnimationDuration.slow.description, color: .accent, action: { [weak actionSheet] in
+                            settingsManager.getSettings(for: currentAnimationType).duration = ChatAnimationDuration.slow
+                            reloadImpl?()
                             actionSheet?.dismissAnimated()
                         })
                     ]),
@@ -269,7 +371,7 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
                 presentControllerImpl?(actionSheet)
             },
             share: {
-                let (path, error) = ChatAnimationSettingsManager.generateJSONFile()
+                let (path, error) = settingsManager.generateJSONFile()
                 guard let filePath = path, error == nil else {
                     let action = TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
                     let alertController = textAlertController(context: context, title: nil, text: "Failed to generate JSON file", actions: [action])
@@ -296,8 +398,8 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
                                                                 presentControllerImpl?(alertController)
                                                                 return
                                                             }
-                                                            let (animationSettings, decoderError) = ChatAnimationSettingsManager.decodeJSON(data)
-                                                            guard let settings = animationSettings, decoderError == nil else {
+                                                            let (settingsSnapshotDecoded, decoderError) = ChatAnimationSettingsManager.decodeJSON(data)
+                                                            guard let settingsSnapshot = settingsSnapshotDecoded, decoderError == nil else {
                                                                 let action = TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
                                                                 let alertController = textAlertController(context: context, title: nil, text: "Failed to import properties from the file.", actions: [action])
                                                                 presentControllerImpl?(alertController)
@@ -305,10 +407,12 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
                                                             }
                                                             
                                                             let action1 = TextAlertAction(type: .genericAction, title: "All types", action: {
-                                                                chatAnimationSettings.update(settings)
+                                                                settingsManager.update(from: settingsSnapshot)
+                                                                reloadImpl?()
                                                             })
                                                             let action2 = TextAlertAction(type: .defaultAction, title: "This type", action: {
-                                                                chatAnimationSettings.update(settings, type: animationType)
+                                                                settingsManager.update(from: settingsSnapshot, type: currentAnimationType)
+                                                                reloadImpl?()
                                                             })
                                                             let alertController = textAlertController(context: context, title: nil, text: "Do you want to import parameters only for current animation type, or for all types?", actions: [action1, action2])
                                                             presentControllerImpl?(alertController)
@@ -317,10 +421,12 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
             },
             restore: {
                 let action1 = TextAlertAction(type: .genericAction, title: "All types", action: {
-                    chatAnimationSettings.restore()
+                    settingsManager.restoreDefaults()
+                    reloadImpl?()
                 })
                 let action2 = TextAlertAction(type: .defaultAction, title: "This type", action: {
-                    chatAnimationSettings.restore(type: animationType)
+                    settingsManager.restoreDefaults(type: currentAnimationType)
+                    reloadImpl?()
                 })
                 let alertController = textAlertController(context: context, title: nil, text: "Do you want to restore parameters only for current animation type, or for all types?", actions: [action1, action2])
                 presentControllerImpl?(alertController)
@@ -339,6 +445,14 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
     
     dismissImpl = { [weak controller] in
         controller?.dismiss()
+    }
+    reloadImpl = {
+        updateState { state in
+            var state = state
+            // make it dirty to trigger update chain for signal
+            state.dirtyCounter += 1
+            return state
+        }
     }
     pushControllerImpl = { [weak controller] newController in
         (controller?.navigationController as? NavigationController)?.pushViewController(newController)
