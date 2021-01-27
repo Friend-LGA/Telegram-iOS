@@ -307,7 +307,7 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
             self.leftSlider.value = self.rightSlider.value - gapBetweenSliders
         }
         if let timingFunction = self.timingFunction {
-            timingFunction.startPoint = CGPoint(x: CGFloat(self.leftSlider.value), y: 0.0)
+            timingFunction.startTimeOffset = CGFloat(self.leftSlider.value)
         }
         self.setNeedsDisplay()
     }
@@ -318,7 +318,7 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
             self.rightSlider.value = self.leftSlider.value + gapBetweenSliders
         }
         if let timingFunction = self.timingFunction {
-            timingFunction.endPoint = CGPoint(x: CGFloat(self.rightSlider.value), y: 1.0)
+            timingFunction.endTimeOffset = CGFloat(1.0 - self.rightSlider.value)
         }
         self.setNeedsDisplay()
     }
@@ -409,8 +409,8 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
         let size = self.bounds.size
         
         self.boundsSliderMaxValue = duration.maxValue
-        self.leftSlider.value = Float(timingFunction.startPoint.x)
-        self.rightSlider.value = Float(timingFunction.endPoint.x)
+        self.leftSlider.value = Float(timingFunction.startTimeOffset)
+        self.rightSlider.value = Float(1.0 - timingFunction.endTimeOffset)
         self.bottomSlider.value = Float(timingFunction.controlPoint1.x)
         self.topSlider.value = Float(1.0 - timingFunction.controlPoint2.x)
         
@@ -490,7 +490,7 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
         let bottomControlPointOffset = parameters.bottomControlPointOffset
         let leftBoundsOffset = parameters.leftBoundsOffset
         let rightBoundsOffset = parameters.rightBoundsOffset
-                
+        
         var topLeft = CGPoint(x: rect.minX, y: rect.minY)
         var topRight = CGPoint(x: rect.maxX, y: rect.minY)
         var bottomLeft = CGPoint(x: rect.minX, y: rect.maxY)
@@ -608,7 +608,7 @@ class ChatAnimationSettingsCurveItemNode: ListViewItemNode, ItemListItemNode {
         
         super.init(layerBacked: false, dynamicBounce: false)
     }
-        
+    
     func asyncLayout() -> (_ item: ChatAnimationSettingsCurveItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
         return { item, params, neighbors in
             let contentSize = CGSize(width: params.width, height: contentHeight)

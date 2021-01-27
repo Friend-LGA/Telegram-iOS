@@ -139,6 +139,6 @@ public func createChatAnimationSettingsTypeController(context: AccountContext, o
     dismissImpl = { [weak controller] in
         controller?.dismiss()
     }
-       
+    
     return controller
 }

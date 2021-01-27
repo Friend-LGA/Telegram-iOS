@@ -51,19 +51,31 @@ public enum ChatAnimationDuration: Double, Codable {
 }
 
 final public class ChatAnimationTimingFunction: Codable {
-    public var startPoint: CGPoint
-    public var endPoint: CGPoint
+    public var startTimeOffset: CGFloat
+    public var endTimeOffset: CGFloat
     public var controlPoint1: CGPoint
     public var controlPoint2: CGPoint
     
-    init(startPoint: CGPoint = CGPoint.zero,
-         endPoint: CGPoint = CGPoint(x: 1.0, y: 1.0),
+    init(startTimeOffset: CGFloat = 0.0,
+         endTimeOffset: CGFloat = 0.0,
          controlPoint1: CGPoint = CGPoint(x: 1.0, y: 0.0),
          controlPoint2: CGPoint = CGPoint(x: 0.0, y: 1.0)) {
-        self.startPoint = startPoint
-        self.endPoint = endPoint
+        self.startTimeOffset = startTimeOffset
+        self.endTimeOffset = endTimeOffset
         self.controlPoint1 = controlPoint1
         self.controlPoint2 = controlPoint2
+    }
+    
+    public var startPoint: CGPoint {
+        return CGPoint.zero
+    }
+    
+    public var endPoint: CGPoint {
+        return CGPoint(x: 1.0, y: 1.0)
+    }
+    
+    public var duration: CGFloat {
+        return 1.0 - endTimeOffset - startTimeOffset
     }
     
     public func restoreDefaults() {
@@ -71,8 +83,8 @@ final public class ChatAnimationTimingFunction: Codable {
     }
     
     public func update(from other: ChatAnimationTimingFunction) {
-        self.startPoint = other.startPoint
-        self.endPoint = other.endPoint
+        self.startTimeOffset = other.startTimeOffset
+        self.endTimeOffset = other.endTimeOffset
         self.controlPoint1 = other.controlPoint1
         self.controlPoint2 = other.controlPoint2
     }
@@ -81,6 +93,9 @@ final public class ChatAnimationTimingFunction: Codable {
 public protocol ChatAnimationSettings: class {
     var type: ChatAnimationType { get }
     var duration: ChatAnimationDuration { get set }
+    var yPositionFunc: ChatAnimationTimingFunction { get set }
+    var xPositionFunc: ChatAnimationTimingFunction { get set }
+    var timeAppearsFunc: ChatAnimationTimingFunction { get set }
 }
 
 final public class ChatAnimationSettingsCommon: ChatAnimationSettings, Codable {
@@ -236,7 +251,7 @@ final public class ChatAnimationSettingsManager: Codable {
         
         return ChatAnimationSettingsCommon(type)
     }
-        
+    
     static private func getEmojiSettings() -> ChatAnimationSettingsEmoji {
         if let settingsData = UserDefaults.standard.object(forKey: self.keyForType(.emoji)) as? Data,
            let settings = ChatAnimationSettingsEmoji.decodeJSON(settingsData).result {
@@ -274,7 +289,7 @@ final public class ChatAnimationSettingsManager: Codable {
             return self.videoSettings
         }
     }
-     
+    
     public func applyChanges() {
         let defaults = UserDefaults.standard
         defaults.set(self.smallSettings.generateJSONData().data, forKey: ChatAnimationSettingsManager.smallSettingsKey)

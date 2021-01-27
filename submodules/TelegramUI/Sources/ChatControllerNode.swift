@@ -336,6 +336,7 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
     private var inputMediaNode: ChatMediaInputNode?
     public private(set) var textInputLastFrame: CGRect?
     public private(set) var textInputLastContentOffset: CGPoint?
+    public private(set) var textInputLastContentSize: CGSize?
     
     let navigateButtons: ChatHistoryNavigationButtons
     
@@ -617,6 +618,10 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
                     strongSelf.textInputLastContentOffset = nil
                     if let textInputNode = strongSelf.textInputPanelNode?.textInputNode {
                         strongSelf.textInputLastContentOffset = textInputNode.textView.contentOffset
+                    }
+                    strongSelf.textInputLastContentSize = nil
+                    if let textInputNode = strongSelf.textInputPanelNode?.textInputNode {
+                        strongSelf.textInputLastContentSize = textInputNode.textView.contentSize
                     }
                     strongSelf.sendCurrentMessage()
                 }

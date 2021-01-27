@@ -18,7 +18,7 @@ private final class ChatAnimationSettingsControllerArguments {
     let share: () -> Void
     let importParams: () -> Void
     let restore: () -> Void
-
+    
     init(openType: @escaping () -> Void,
          openDuration: @escaping () -> Void,
          share: @escaping () -> Void,
@@ -298,20 +298,20 @@ private func createChatAnimationSettingsControllerEntries(_ state: ChatAnimation
 
 public func createChatAnimationSettingsController(context: AccountContext) -> ViewController {
     let settingsManager = ChatAnimationSettingsManager()
-        
+    
     let initialState = ChatAnimationSettingsControllerState()
     let statePromise = ValuePromise(initialState, ignoreRepeated: true)
     let stateValue = Atomic(value: initialState)
     let updateState: ((ChatAnimationSettingsControllerState) -> ChatAnimationSettingsControllerState) -> Void = { f in
         statePromise.set(stateValue.modify { f($0) })
     }
-        
+    
     var dismissImpl: (() -> Void)?
     var reloadImpl: (() -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
     var presentControllerImpl: ((ViewController) -> Void)?
     var presentActivityControllerImpl: ((UIActivityViewController) -> Void)?
-        
+    
     let signal = combineLatest(context.sharedContext.presentationData, statePromise.get() |> deliverOnMainQueue)
         |> map { presentationData, state -> (ItemListControllerState, (ItemListNodeState, Any)) in
             let leftNavigationButton = ItemListNavigationButton(content: .text(presentationData.strings.Common_Cancel), style: .regular, enabled: true, action: {
@@ -322,7 +322,7 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
                 settingsManager.applyChanges()
                 dismissImpl?()
             })
-                        
+            
             let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData),
                                                           title: .text("Animation Settings"),
                                                           leftNavigationButton: leftNavigationButton,
@@ -387,36 +387,36 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
             },
             importParams: {
                 let pickerController = legacyICloudFilePicker(theme: presentationData.theme,
-                                                        mode: .import,
-                                                        documentTypes: ["org.telegram.Telegram-iOS.chat-animation"],
-                                                        allowsMultipleSelection: false,
-                                                        completion: { urls in
-                                                            guard let url = urls.first else { return }
-                                                            guard let data = try? Data(contentsOf: url) else {
-                                                                let action = TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
-                                                                let alertController = textAlertController(context: context, title: nil, text: "Failed to read file", actions: [action])
+                                                              mode: .import,
+                                                              documentTypes: ["org.telegram.Telegram-iOS.chat-animation"],
+                                                              allowsMultipleSelection: false,
+                                                              completion: { urls in
+                                                                guard let url = urls.first else { return }
+                                                                guard let data = try? Data(contentsOf: url) else {
+                                                                    let action = TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
+                                                                    let alertController = textAlertController(context: context, title: nil, text: "Failed to read file", actions: [action])
+                                                                    presentControllerImpl?(alertController)
+                                                                    return
+                                                                }
+                                                                let (settingsSnapshotDecoded, decoderError) = ChatAnimationSettingsManager.decodeJSON(data)
+                                                                guard let settingsSnapshot = settingsSnapshotDecoded, decoderError == nil else {
+                                                                    let action = TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
+                                                                    let alertController = textAlertController(context: context, title: nil, text: "Failed to import properties from the file.", actions: [action])
+                                                                    presentControllerImpl?(alertController)
+                                                                    return
+                                                                }
+                                                                
+                                                                let action1 = TextAlertAction(type: .genericAction, title: "All types", action: {
+                                                                    settingsManager.update(from: settingsSnapshot)
+                                                                    reloadImpl?()
+                                                                })
+                                                                let action2 = TextAlertAction(type: .defaultAction, title: "This type", action: {
+                                                                    settingsManager.update(from: settingsSnapshot, type: currentAnimationType)
+                                                                    reloadImpl?()
+                                                                })
+                                                                let alertController = textAlertController(context: context, title: nil, text: "Do you want to import parameters only for current animation type, or for all types?", actions: [action1, action2])
                                                                 presentControllerImpl?(alertController)
-                                                                return
-                                                            }
-                                                            let (settingsSnapshotDecoded, decoderError) = ChatAnimationSettingsManager.decodeJSON(data)
-                                                            guard let settingsSnapshot = settingsSnapshotDecoded, decoderError == nil else {
-                                                                let action = TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
-                                                                let alertController = textAlertController(context: context, title: nil, text: "Failed to import properties from the file.", actions: [action])
-                                                                presentControllerImpl?(alertController)
-                                                                return
-                                                            }
-                                                            
-                                                            let action1 = TextAlertAction(type: .genericAction, title: "All types", action: {
-                                                                settingsManager.update(from: settingsSnapshot)
-                                                                reloadImpl?()
-                                                            })
-                                                            let action2 = TextAlertAction(type: .defaultAction, title: "This type", action: {
-                                                                settingsManager.update(from: settingsSnapshot, type: currentAnimationType)
-                                                                reloadImpl?()
-                                                            })
-                                                            let alertController = textAlertController(context: context, title: nil, text: "Do you want to import parameters only for current animation type, or for all types?", actions: [action1, action2])
-                                                            presentControllerImpl?(alertController)
-                                                        })
+                                                              })
                 presentControllerImpl?(pickerController)
             },
             restore: {
@@ -465,6 +465,6 @@ public func createChatAnimationSettingsController(context: AccountContext) -> Vi
         activityController.popoverPresentationController?.sourceView = window
         rootVC.present(activityController, animated: true, completion: nil)
     }
-       
+    
     return controller
 }
