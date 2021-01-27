@@ -16,11 +16,12 @@ fileprivate extension CGRect {
 }
 
 fileprivate struct Config {
+    let animatingNode: (startFrame: CGRect, endFrame: CGRect)
     let inputTextContainerNode: (convertedFrame: CGRect, contentOffset: CGPoint, contentSize: CGSize, insets: UIEdgeInsets)
-    let chatMessageMainContainerNode: (originalFrame: CGRect, convertedFrame: CGRect, originalSubnodeIndex: Int, originalClipsToBounds: Bool)
+    var chatMessageMainContainerNode: (originalFrame: CGRect, convertedFrame: CGRect, originalSubnodeIndex: Int, originalClipsToBounds: Bool)
     let chatMessageMainContextNodeOriginalFrame: CGRect
     let chatMessageMainContextContentNodeOriginalFrame: CGRect
-    let chatMessageBackgroundNode: (originalFrame: CGRect, offset: CGPoint)
+    var chatMessageBackgroundNode: (originalFrame: CGRect, offset: CGPoint, convertedFrame: CGRect)
     let chatMessageTextContentNodeOriginalFrame: CGRect
     let chatMessageTextNode: (originalFrame: CGRect, insets: UIEdgeInsets)
     let chatMessageStatusNode: (originalFrame: CGRect, offset: CGPoint, originalAlpha: CGFloat)
@@ -50,8 +51,11 @@ fileprivate struct Config {
                                        contentSize: viewNode.textInputLastContentSize ?? CGSize.zero,
                                        insets: inputPanelNode.textInputNode?.textContainerInset ?? UIEdgeInsets.zero)
         
+        self.animatingNode = (startFrame: self.inputTextContainerNode.convertedFrame,
+                              endFrame: chatMessageBackgroundNode.view.convert(chatMessageBackgroundNode.view.bounds, to: viewNode.view))
+        
         self.chatMessageMainContainerNode = (originalFrame: chatMessageMainContainerNode.frame,
-                                             convertedFrame: chatMessageMainContainerNode.view.convert(chatMessageMainContainerNode.view.bounds, to: viewNode.view),
+                                             convertedFrame: CGRect.zero, // chatMessageMainContainerNode.view.convert(chatMessageMainContainerNode.view.bounds, to: viewNode.view),
                                              originalSubnodeIndex: chatMessageNode.subnodes!.firstIndex(of: chatMessageMainContainerNode)!,
                                              originalClipsToBounds: chatMessageMainContainerNode.clipsToBounds)
         
@@ -62,7 +66,8 @@ fileprivate struct Config {
         let chatMessageBackgroundNodeOffsetX = chatMessageMainContextContentNode.frame.width - chatMessageBackgroundNodeConvertedFrame.maxX
         let chatMessageBackgroundNodeOffsetY = chatMessageMainContextContentNode.frame.height - chatMessageBackgroundNodeConvertedFrame.maxY
         self.chatMessageBackgroundNode = (originalFrame: chatMessageBackgroundNode.frame,
-                                          offset: CGPoint(x: chatMessageBackgroundNodeOffsetX, y: chatMessageBackgroundNodeOffsetY))
+                                          offset: CGPoint(x: chatMessageBackgroundNodeOffsetX, y: chatMessageBackgroundNodeOffsetY),
+                                          convertedFrame: CGRect.zero) // chatMessageBackgroundNode.view.convert(chatMessageBackgroundNode.view.bounds, to: viewNode.view))
         
         self.chatMessageTextContentNodeOriginalFrame = chatMessageTextContentNode.frame
         
@@ -333,7 +338,7 @@ struct ChatControllerAnimations {
             //          |- chatMessageReplyInfoNode
             //          |- chatMessageForwardInfoNode
             
-            let config = Config(viewNode: viewNode,
+            var config = Config(viewNode: viewNode,
                                 inputPanelNode: inputPanelNode,
                                 inputTextContainerNode: inputTextContainerNode,
                                 chatMessageNode: chatMessageNode,
@@ -363,40 +368,41 @@ struct ChatControllerAnimations {
                 }
             }
             
+            let animatingNode = ASDisplayNode()
+            let maskNode = ASDisplayNode()
+            let maskShapeLayer = CAShapeLayer()
             let backgroundNode = ASDisplayNode()
             let backgroundShapeLayer = CAShapeLayer()
-            
             let tailNode = ASDisplayNode()
-            
-//            let maskNode = ASDisplayNode()
-//            let maskShapeLayer = CAShapeLayer()
             
             // Prepare all nodes to be places and look exactly like input text view
             do {
-                do { // chatMessageMainContainerNode
-                    // Remove node content view from list view.
-                    // Move it above input panel, but below navigation bar
-                    chatMessageMainContainerNode.removeFromSupernode()
-                    viewNode.insertSubnode(chatMessageMainContainerNode, aboveSubnode: viewNode.inputContextPanelContainer)
-                    
-                    chatMessageMainContainerNode.frame = config.inputTextContainerNode.convertedFrame
-//                    chatMessageMainContainerNode.clipsToBounds = true
-                }
-                
                 let backgroundPath = generateTextInputBackgroundPath(config, config.inputTextContainerNode.convertedFrame.size)
-
-                do { // chatMessageMainContextNode, draws bubble background
-                    chatMessageMainContextNode.frame = config.inputTextContainerNode.convertedFrame.toBounds()
-
-                    // Create sublayer which mimics input text view background and will be transformed to bubble
+                
+                do {
+                    // Create node which mimics input text view background and will be transformed to bubble
+                    // Move it above input panel, but below navigation bar
+                    viewNode.insertSubnode(animatingNode, aboveSubnode: viewNode.inputContextPanelContainer)
+                    animatingNode.frame = config.animatingNode.startFrame
+                    
+                    config.chatMessageBackgroundNode.convertedFrame = chatMessageBackgroundNode.view.convert(chatMessageBackgroundNode.view.bounds, to: animatingNode.view)
+                    
+                    maskShapeLayer.path = backgroundPath.cgPath
+                    maskShapeLayer.strokeColor = UIColor.black.cgColor
+                    maskShapeLayer.fillColor = UIColor.black.cgColor
+                    maskNode.layer.mask = maskShapeLayer
+                    animatingNode.addSubnode(maskNode)
+                    maskNode.frame = animatingNode.bounds
+                    maskShapeLayer.frame = maskNode.bounds
+                    
                     backgroundShapeLayer.path = backgroundPath.cgPath
                     backgroundShapeLayer.strokeColor = config.textInputStyle.strokeColor.cgColor
                     backgroundShapeLayer.fillColor = config.textInputStyle.fillColor.cgColor
                     backgroundNode.layer.addSublayer(backgroundShapeLayer)
-                    chatMessageMainContextNode.insertSubnode(backgroundNode, at: 0)
-                    backgroundNode.frame = chatMessageMainContextNode.bounds
+                    animatingNode.addSubnode(backgroundNode)
+                    backgroundNode.frame = animatingNode.bounds
                     backgroundShapeLayer.frame = backgroundNode.bounds
-
+                    
                     // Create sublayer with tail image.
                     // Actually here are 3 ways it can be improved:
                     // 1. Draw tail as a part of the background bubble path, so it's transformation could be animated
@@ -406,19 +412,29 @@ struct ChatControllerAnimations {
                     tailMaskLayer.contents = generateTailImage(config, config.chatMessageBackgroundNode.originalFrame.size).cgImage
                     tailNode.layer.mask = tailMaskLayer
                     tailNode.backgroundColor = config.textInputStyle.fillColor
-                    chatMessageMainContextNode.insertSubnode(tailNode, at: 0)
-                    tailNode.frame = CGRect(origin: CGPoint(x: chatMessageMainContextNode.bounds.width - config.chatMessageBackgroundNode.offset.x - config.chatMessageBackgroundNode.originalFrame.width,
-                                                            y: chatMessageMainContextNode.bounds.height - config.chatMessageBackgroundNode.offset.y - config.chatMessageBackgroundNode.originalFrame.height),
+                    animatingNode.insertSubnode(tailNode, belowSubnode: backgroundNode)
+                    tailNode.frame = CGRect(origin: CGPoint(x: animatingNode.bounds.width - config.chatMessageBackgroundNode.offset.x - config.chatMessageBackgroundNode.originalFrame.width,
+                                                            y: animatingNode.bounds.height - config.chatMessageBackgroundNode.offset.y - config.chatMessageBackgroundNode.originalFrame.height),
                                             size: config.chatMessageBackgroundNode.originalFrame.size)
                     tailMaskLayer.frame = tailNode.bounds
                 }
-
+                
+                do { // chatMessageMainContainerNode
+                    config.chatMessageMainContainerNode.convertedFrame = chatMessageMainContainerNode.view.convert(chatMessageMainContainerNode.view.bounds, to: chatMessageBackgroundNode.view)
+                    
+                    // Remove node content view from list view.
+                    chatMessageMainContainerNode.removeFromSupernode()
+                    backgroundNode.addSubnode(chatMessageMainContainerNode)
+                    
+                    chatMessageMainContainerNode.frame = animatingNode.bounds
+                }
+                
+                do { // chatMessageMainContextNode, draws bubble background
+                    chatMessageMainContextNode.frame = animatingNode.bounds
+                }
+                
                 do { // chatMessageMainContextContentNode, masks everything outside of bubble background
-//                    chatMessageMainContextContentNode.frame = config.inputTextContainerNode.convertedFrame.toBounds()
-//
-//                    maskShapeLayer.path = backgroundPath.cgPath
-//                    maskShapeLayer.fillColor = UIColor.black.cgColor
-//                    chatMessageMainContextContentNode.layer.mask = maskShapeLayer
+                    chatMessageMainContextContentNode.frame = animatingNode.bounds
                 }
                 
                 do { // chatMessageBackgroundNode
@@ -427,19 +443,19 @@ struct ChatControllerAnimations {
                     // which we are doing using "maskShapeLayer"
                     chatMessageBackgroundNode.isHidden = true
                 }
-
+                
                 do { // chatMessageTextContentNode
-                    chatMessageTextContentNode.frame = config.inputTextContainerNode.convertedFrame.toBounds()
+                    chatMessageTextContentNode.frame = animatingNode.bounds
                 }
-
+                
                 do { // chatMessageWebpageContentNode
                     if let chatMessageWebpageContentNode = chatMessageWebpageContentNode,
                        let originalFrame = config.chatMessageWebpageContentNodeOriginalFrame {
                         chatMessageWebpageContentNode.frame = CGRect(origin: CGPoint(x: 0.0, y: originalFrame.minY),
-                                                                     size: config.inputTextContainerNode.convertedFrame.size)
+                                                                     size: animatingNode.bounds.size)
                     }
                 }
-
+                
                 do { // chatMessageTextNode
                     // Actually we should calculate difference in insets here to match content,
                     // but apparently it is working fine without it. Needs to be investigated.
@@ -447,7 +463,7 @@ struct ChatControllerAnimations {
                     let insetsOffsetY: CGFloat = 0.0
                     chatMessageTextNode.frame = chatMessageTextNode.frame.offsetBy(dx: CGFloat.zero, dy: -config.inputTextContainerNode.contentOffset.y + insetsOffsetY)
                 }
-
+                
                 do { // chatMessageStatusNode
                     let origin = CGPoint(x: chatMessageTextContentNode.bounds.width - config.chatMessageStatusNode.offset.x - config.chatMessageStatusNode.originalFrame.size.width,
                                          y: chatMessageTextContentNode.bounds.height - config.chatMessageStatusNode.offset.y - config.chatMessageStatusNode.originalFrame.size.height)
@@ -455,7 +471,7 @@ struct ChatControllerAnimations {
                     chatMessageStatusNode.frame = CGRect(origin: convertedOrigin, size: chatMessageStatusNode.bounds.size)
                     chatMessageStatusNode.alpha = CGFloat.zero
                 }
-
+                
                 do { // chatMessageReplyInfoNode
                     if let chatMessageReplyInfoNode = chatMessageReplyInfoNode,
                        let originalFrame = config.chatMessageReplyInfoNodeOriginalFrame {
@@ -464,7 +480,7 @@ struct ChatControllerAnimations {
                                                                 size: chatMessageReplyInfoNode.bounds.size)
                     }
                 }
-
+                
                 do { // chatMessageForwardInfoNode
                     if let chatMessageForwardInfoNode = chatMessageForwardInfoNode,
                        let originalFrame = config.chatMessageForwardInfoNodeOriginalFrame {
@@ -496,7 +512,6 @@ struct ChatControllerAnimations {
                     chatMessageMainContainerNode.removeFromSupernode()
                     chatMessageNode.insertSubnode(chatMessageMainContainerNode, at: config.chatMessageMainContainerNode.originalSubnodeIndex)
                     chatMessageMainContainerNode.frame = config.chatMessageMainContainerNode.originalFrame
-                    chatMessageMainContainerNode.clipsToBounds = config.chatMessageMainContainerNode.originalClipsToBounds
                 }
                 if let chatMessageMainContextNode = chatMessageMainContextNode {
                     chatMessageMainContextNode.frame = config.chatMessageMainContextNodeOriginalFrame
@@ -521,9 +536,106 @@ struct ChatControllerAnimations {
                 if let chatMessageForwardInfoNode = chatMessageForwardInfoNode, let originalFrame = config.chatMessageForwardInfoNodeOriginalFrame {
                     chatMessageForwardInfoNode.frame = originalFrame
                 }
+                animatingNode.removeFromSupernode()
                 backgroundNode.removeFromSupernode()
                 tailNode.removeFromSupernode()
                 completion()
+            }
+            
+            do { // animatingNode
+                let animations = [
+                    setupResizeAnimation(layer: animatingNode.layer,
+                                         size: config.animatingNode.endFrame.size,
+                                         duration: animationDuration,
+                                         timingFunction: settings.bubbleShapeFunc),
+                    setupRepositionXAnimation(layer: animatingNode.layer,
+                                              positionX: config.animatingNode.endFrame.position.x,
+                                              duration: animationDuration,
+                                              timingFunction: settings.xPositionFunc),
+                    setupRepositionYAnimation(layer: animatingNode.layer,
+                                              positionY: config.animatingNode.endFrame.position.y,
+                                              duration: animationDuration,
+                                              timingFunction: settings.yPositionFunc)
+                ]
+                animatingNode.frame = config.animatingNode.endFrame
+                addAnimations(animatingNode.layer, animations, duration: animationDuration)
+            }
+            
+            let newBackgroundPath = generateBubbleBackgroundPath(config, config.chatMessageBackgroundNode.originalFrame.size)
+            
+            do { // maskShapeLayer
+                let redrawPathAnimation = CABasicAnimation(keyPath: "path")
+                redrawPathAnimation.fromValue = maskShapeLayer.path
+                redrawPathAnimation.toValue = newBackgroundPath.cgPath
+                updateAnimation(redrawPathAnimation, duration: animationDuration, timingFunction: settings.bubbleShapeFunc)
+
+                let animations = [redrawPathAnimation]
+                maskShapeLayer.path = newBackgroundPath.cgPath
+                addAnimations(maskShapeLayer, animations, duration: animationDuration)
+            }
+            
+            do { // backgroundShapeLayer
+                let redrawPathAnimation = CABasicAnimation(keyPath: "path")
+                redrawPathAnimation.fromValue = backgroundShapeLayer.path
+                redrawPathAnimation.toValue = newBackgroundPath.cgPath
+                updateAnimation(redrawPathAnimation, duration: animationDuration, timingFunction: settings.bubbleShapeFunc)
+                
+                let newStrokeColor = UIColor.clear.cgColor // chatMessageBackgroundNode.chatMessageBackgroundStrokeColor.cgColor
+                let redrawStrokeAnimation = CABasicAnimation(keyPath: "strokeColor")
+                redrawStrokeAnimation.fromValue = backgroundShapeLayer.strokeColor
+                redrawStrokeAnimation.toValue = newStrokeColor
+                updateAnimation(redrawStrokeAnimation, duration: animationDuration, timingFunction: settings.colorChangeFunc)
+                
+                let newFillColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor.cgColor
+                let redrawFillAnimation = CABasicAnimation(keyPath: "fillColor")
+                redrawFillAnimation.fromValue = backgroundShapeLayer.fillColor
+                redrawFillAnimation.toValue = newFillColor
+                updateAnimation(redrawFillAnimation, duration: animationDuration, timingFunction: settings.colorChangeFunc)
+                
+                let animations = [
+                    redrawPathAnimation,
+                    redrawStrokeAnimation,
+                    redrawFillAnimation
+                ]
+                backgroundShapeLayer.path = newBackgroundPath.cgPath
+                backgroundShapeLayer.strokeColor = newStrokeColor
+                backgroundShapeLayer.fillColor = newFillColor
+                addAnimations(backgroundShapeLayer, animations, duration: animationDuration)
+            }
+            
+            do { // tailNode
+                let newFrame = CGRect(origin: CGPoint(x: config.animatingNode.endFrame.width - config.chatMessageBackgroundNode.offset.x - config.animatingNode.endFrame.width,
+                                                      y: config.animatingNode.endFrame.height - config.chatMessageBackgroundNode.offset.y - config.animatingNode.endFrame.height),
+                                      size: config.animatingNode.endFrame.size)
+                
+                let newOpacity: CGFloat = 1.0
+                let showAnimation = CABasicAnimation(keyPath: "opacity")
+                showAnimation.fromValue = tailNode.alpha
+                showAnimation.toValue = newOpacity
+                updateAnimation(showAnimation, duration: animationDuration, timingFunction: settings.bubbleShapeFunc)
+                
+                let newBackgroundColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor
+                let redrawFillAnimation = CABasicAnimation(keyPath: "fillColor")
+                redrawFillAnimation.fromValue = tailNode.backgroundColor
+                redrawFillAnimation.toValue = newBackgroundColor
+                updateAnimation(redrawFillAnimation, duration: animationDuration, timingFunction: settings.colorChangeFunc)
+                
+                let animations = [
+                    setupRepositionXAnimation(layer: tailNode.layer,
+                                              positionX: newFrame.position.x,
+                                              duration: animationDuration,
+                                              timingFunction: settings.xPositionFunc),
+                    setupRepositionYAnimation(layer: tailNode.layer,
+                                              positionY: newFrame.position.y,
+                                              duration: animationDuration,
+                                              timingFunction: settings.yPositionFunc),
+                    showAnimation,
+                    redrawFillAnimation
+                ]
+                tailNode.frame = newFrame
+                tailNode.alpha = newOpacity
+                tailNode.backgroundColor = newBackgroundColor
+                addAnimations(tailNode.layer, animations, duration: animationDuration)
             }
             
             do { // chatMessageMainContainerNode
@@ -583,117 +695,6 @@ struct ChatControllerAnimations {
                 addAnimations(chatMessageMainContextContentNode.layer, animations, duration: animationDuration)
             }
             
-            let newBackgroundPath = generateBubbleBackgroundPath(config, config.chatMessageBackgroundNode.originalFrame.size)
-
-//            do { // maskShapeLayer
-//                let redrawPathAnimation = CABasicAnimation(keyPath: "path")
-//                redrawPathAnimation.fromValue = maskShapeLayer.path
-//                redrawPathAnimation.toValue = newBackgroundPath.cgPath
-//                updateAnimation(redrawPathAnimation, duration: animationDuration, timingFunction: settings.bubbleShapeFunc)
-//
-//                let animations = [
-//                    setupResizeAnimation(layer: maskShapeLayer,
-//                                         size: config.chatMessageBackgroundNode.originalFrame.size,
-//                                         duration: animationDuration,
-//                                         timingFunction: settings.bubbleShapeFunc),
-//                    setupRepositionXAnimation(layer: maskShapeLayer,
-//                                              positionX: config.chatMessageBackgroundNode.originalFrame.position.x,
-//                                              duration: animationDuration,
-//                                              timingFunction: settings.xPositionFunc),
-//                    setupRepositionYAnimation(layer: maskShapeLayer,
-//                                              positionY: config.chatMessageBackgroundNode.originalFrame.position.y,
-//                                              duration: animationDuration,
-//                                              timingFunction: settings.yPositionFunc),
-//                    redrawPathAnimation
-//                ]
-//                maskShapeLayer.frame = config.chatMessageBackgroundNode.originalFrame
-//                maskShapeLayer.path = newBackgroundPath.cgPath
-//                addAnimations(maskShapeLayer, animations, duration: animationDuration)
-//            }
-            
-            do { // backgroundNode
-                let animations = [
-                    setupResizeAnimation(layer: backgroundNode.layer,
-                                         size: config.chatMessageBackgroundNode.originalFrame.size,
-                                         duration: animationDuration,
-                                         timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionXAnimation(layer: backgroundNode.layer,
-                                              positionX: config.chatMessageBackgroundNode.originalFrame.position.x,
-                                              duration: animationDuration,
-                                              timingFunction: settings.xPositionFunc),
-                    setupRepositionYAnimation(layer: backgroundNode.layer,
-                                              positionY: config.chatMessageBackgroundNode.originalFrame.position.y,
-                                              duration: animationDuration,
-                                              timingFunction: settings.yPositionFunc),
-                ]
-                backgroundNode.frame = config.chatMessageBackgroundNode.originalFrame
-                addAnimations(backgroundNode.layer, animations, duration: animationDuration)
-            }
-
-            do { // backgroundShapeLayer
-                let redrawPathAnimation = CABasicAnimation(keyPath: "path")
-                redrawPathAnimation.fromValue = backgroundShapeLayer.path
-                redrawPathAnimation.toValue = newBackgroundPath.cgPath
-                updateAnimation(redrawPathAnimation, duration: animationDuration, timingFunction: settings.bubbleShapeFunc)
-
-                let newStrokeColor = UIColor.clear.cgColor // chatMessageBackgroundNode.chatMessageBackgroundStrokeColor.cgColor
-                let redrawStrokeAnimation = CABasicAnimation(keyPath: "strokeColor")
-                redrawStrokeAnimation.fromValue = backgroundShapeLayer.strokeColor
-                redrawStrokeAnimation.toValue = newStrokeColor
-                updateAnimation(redrawStrokeAnimation, duration: animationDuration, timingFunction: settings.colorChangeFunc)
-
-                let newFillColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor.cgColor
-                let redrawFillAnimation = CABasicAnimation(keyPath: "fillColor")
-                redrawFillAnimation.fromValue = backgroundShapeLayer.fillColor
-                redrawFillAnimation.toValue = newFillColor
-                updateAnimation(redrawFillAnimation, duration: animationDuration, timingFunction: settings.colorChangeFunc)
-
-                let animations = [
-                    redrawPathAnimation,
-                    redrawStrokeAnimation,
-                    redrawFillAnimation
-                ]
-                backgroundShapeLayer.path = newBackgroundPath.cgPath
-                backgroundShapeLayer.strokeColor = newStrokeColor
-                backgroundShapeLayer.fillColor = newFillColor
-                addAnimations(backgroundShapeLayer, animations, duration: animationDuration)
-            }
-
-            do { // tailNode
-                let newFrame = CGRect(origin: CGPoint(x: config.chatMessageMainContextNodeOriginalFrame.width - config.chatMessageBackgroundNode.offset.x - config.chatMessageBackgroundNode.originalFrame.width,
-                                                      y: config.chatMessageMainContextNodeOriginalFrame.height - config.chatMessageBackgroundNode.offset.y - config.chatMessageBackgroundNode.originalFrame.height),
-                                      size: config.chatMessageBackgroundNode.originalFrame.size)
-
-                let newOpacity: CGFloat = 1.0
-                let showAnimation = CABasicAnimation(keyPath: "opacity")
-                showAnimation.fromValue = tailNode.alpha
-                showAnimation.toValue = newOpacity
-                updateAnimation(showAnimation, duration: animationDuration, timingFunction: settings.bubbleShapeFunc)
-
-                let newBackgroundColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor
-                let redrawFillAnimation = CABasicAnimation(keyPath: "fillColor")
-                redrawFillAnimation.fromValue = tailNode.backgroundColor
-                redrawFillAnimation.toValue = newBackgroundColor
-                updateAnimation(redrawFillAnimation, duration: animationDuration, timingFunction: settings.colorChangeFunc)
-
-                let animations = [
-                    setupRepositionXAnimation(layer: tailNode.layer,
-                                              positionX: newFrame.position.x,
-                                              duration: animationDuration,
-                                              timingFunction: settings.xPositionFunc),
-                    setupRepositionYAnimation(layer: tailNode.layer,
-                                              positionY: newFrame.position.y,
-                                              duration: animationDuration,
-                                              timingFunction: settings.yPositionFunc),
-                    showAnimation,
-                    redrawFillAnimation
-                ]
-                tailNode.frame = newFrame
-                tailNode.alpha = newOpacity
-                tailNode.backgroundColor = newBackgroundColor
-                addAnimations(tailNode.layer, animations, duration: animationDuration)
-            }
-
             do { // chatMessageTextContentNode
                 let animations = [
                     setupResizeAnimation(layer: chatMessageTextContentNode.layer,
@@ -712,7 +713,7 @@ struct ChatControllerAnimations {
                 chatMessageTextContentNode.frame = config.chatMessageTextContentNodeOriginalFrame
                 addAnimations(chatMessageTextContentNode.layer, animations, duration: animationDuration)
             }
-
+            
             do { // chatMessageTextNode
                 let animations = [
                     setupRepositionXAnimation(layer: chatMessageTextNode.layer,
@@ -727,13 +728,13 @@ struct ChatControllerAnimations {
                 chatMessageTextNode.frame = config.chatMessageTextNode.originalFrame
                 addAnimations(chatMessageTextNode.layer, animations, duration: animationDuration)
             }
-
+            
             do { // chatMessageStatusNode
                 let showAnimation = CABasicAnimation(keyPath: "opacity")
                 showAnimation.fromValue = chatMessageStatusNode.layer.opacity
                 showAnimation.toValue = config.chatMessageStatusNode.originalAlpha
                 updateAnimation(showAnimation, duration: animationDuration, timingFunction: settings.timeAppearsFunc)
-
+                
                 let animations = [
                     setupRepositionXAnimation(layer: chatMessageStatusNode.layer,
                                               positionX: config.chatMessageStatusNode.originalFrame.position.x,
@@ -749,7 +750,7 @@ struct ChatControllerAnimations {
                 chatMessageStatusNode.alpha = config.chatMessageStatusNode.originalAlpha
                 addAnimations(chatMessageStatusNode.layer, animations, duration: animationDuration)
             }
-
+            
             // chatMessageWebpageContentNode
             if let chatMessageWebpageContentNode = chatMessageWebpageContentNode,
                let originalFrame = config.chatMessageWebpageContentNodeOriginalFrame {
@@ -770,7 +771,7 @@ struct ChatControllerAnimations {
                 chatMessageWebpageContentNode.frame = originalFrame
                 addAnimations(chatMessageWebpageContentNode.layer, animations, duration: animationDuration)
             }
-
+            
             // chatMessageReplyInfoNode
             if let chatMessageReplyInfoNode = chatMessageReplyInfoNode,
                let originalFrame = config.chatMessageReplyInfoNodeOriginalFrame {
@@ -791,7 +792,7 @@ struct ChatControllerAnimations {
                 chatMessageReplyInfoNode.frame = originalFrame
                 addAnimations(chatMessageReplyInfoNode.layer, animations, duration: animationDuration)
             }
-
+            
             // chatMessageForwardInfoNode
             if let chatMessageForwardInfoNode = chatMessageForwardInfoNode,
                let originalFrame = config.chatMessageForwardInfoNodeOriginalFrame {
