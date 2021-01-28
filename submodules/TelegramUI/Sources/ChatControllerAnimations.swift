@@ -15,73 +15,37 @@ fileprivate extension CGRect {
     }
 }
 
+let tailWidth: CGFloat = 6.0
+
 fileprivate struct Config {
+    let startPath: UIBezierPath
+    let endPath: UIBezierPath
+    let tailImage: UIImage
+    
     let animatingNode: (startFrame: CGRect,
                         endFrame: CGRect)
     
     let inputTextContainerNode: (convertedFrame: CGRect,
                                  contentOffset: CGPoint,
                                  contentSize: CGSize,
-                                 insets: UIEdgeInsets)
-    
-    let chatMessageNode: (originalDisplaysAsync: Bool,
-                          originalShouldAnimateSizeChanges: Bool)
+                                 insets: UIEdgeInsets,
+                                 minimalInputHeight: CGFloat)
     
     let chatMessageMainContainerNode: (originalFrame: CGRect,
-                                       convertedFrame: CGRect,
-                                       originalSubnodeIndex: Int,
-                                       originalClipsToBounds: Bool,
-                                       originalDisplaysAsync: Bool,
-                                       originalShouldAnimateSizeChanges: Bool)
-    
-    let chatMessageMainContextNode: (originalFrame: CGRect,
-                                     originalDisplaysAsync: Bool,
-                                     originalShouldAnimateSizeChanges: Bool)
-    
-    let chatMessageMainContextContentNode: (originalFrame: CGRect,
-                                            originalDisplaysAsync: Bool,
-                                            originalShouldAnimateSizeChanges: Bool)
-    
-    let chatMessageBackgroundNode: (originalFrame: CGRect,
-                                    originalDisplaysAsync: Bool,
-                                    originalShouldAnimateSizeChanges: Bool)
-    
-    let chatMessageTextContentNode: (originalFrame: CGRect,
-                                     originalDisplaysAsync: Bool,
-                                     originalShouldAnimateSizeChanges: Bool)
-    
-    let chatMessageTextNode: (originalFrame: CGRect,
-                              insets: UIEdgeInsets,
-                              originalDisplaysAsync: Bool,
-                              originalShouldAnimateSizeChanges: Bool)
+                                       convertedStartFrame: CGRect,
+                                       convertedEndFrame: CGRect,
+                                       originalSubnodeIndex: Int)
     
     let chatMessageStatusNode: (originalFrame: CGRect,
-                                offset: CGPoint,
+                                convertedStartFrame: CGRect,
+                                convertedEndFrame: CGRect,
                                 originalAlpha: CGFloat,
-                                originalDisplaysAsync: Bool,
-                                originalShouldAnimateSizeChanges: Bool)
+                                originalSupernode: ASDisplayNode,
+                                originalSubnodeIndex: Int)
     
-    let chatMessageWebpageContentNode: (originalFrame: CGRect,
-                                        originalDisplaysAsync: Bool,
-                                        originalShouldAnimateSizeChanges: Bool)
-    
-    let chatMessageReplyInfoNode: (originalFrame: CGRect,
-                                   originalDisplaysAsync: Bool,
-                                   originalShouldAnimateSizeChanges: Bool)
-    
-    let chatMessageForwardInfoNode: (originalFrame: CGRect,
-                                     originalDisplaysAsync: Bool,
-                                     originalShouldAnimateSizeChanges: Bool)
-    
-    let textInputStyle: (fillColor: UIColor,
-                         strokeColor: UIColor,
-                         minimalInputHeight: CGFloat)
-    
-    let bubbleStyle: (fillColor: UIColor,
-                      strokeColor: UIColor,
-                      minCornerRadius: CGFloat,
-                      maxCornerRadius: CGFloat,
-                      neighborsDirection: MessageBubbleImageNeighbors)
+    let textInputStyle: (cornerRadius: CGFloat,
+                         fillColor: UIColor,
+                         strokeColor: UIColor)
     
     init(viewNode: ChatControllerNode,
          inputPanelNode: ChatTextInputPanelNode,
@@ -91,82 +55,54 @@ fileprivate struct Config {
          chatMessageMainContextNode: ASDisplayNode,
          chatMessageMainContextContentNode: ASDisplayNode,
          chatMessageBackgroundNode: ChatMessageBackground,
-         chatMessageTextContentNode: ChatMessageTextBubbleContentNode,
-         chatMessageTextNode: ASDisplayNode,
-         chatMessageStatusNode: ASDisplayNode,
-         chatMessageWebpageContentNode: ASDisplayNode? = nil,
-         chatMessageReplyInfoNode: ASDisplayNode? = nil,
-         chatMessageForwardInfoNode: ASDisplayNode? = nil) {
+         chatMessageTextContentNode: ASDisplayNode,
+         chatMessageTextNode: TextNode,
+         chatMessageStatusNode: ASDisplayNode) {
         // ASDisplayNode.convert() is giving wrong values, using UIView.convert() instead
         self.inputTextContainerNode = (convertedFrame: viewNode.textInputLastFrame ?? inputTextContainerNode.view.convert(inputTextContainerNode.view.bounds, to: viewNode.view),
                                        contentOffset: viewNode.textInputLastContentOffset ?? CGPoint.zero,
                                        contentSize: viewNode.textInputLastContentSize ?? CGSize.zero,
-                                       insets: inputPanelNode.textInputNode?.textContainerInset ?? UIEdgeInsets.zero)
+                                       insets: inputPanelNode.textInputNode?.textContainerInset ?? UIEdgeInsets.zero,
+                                       minimalInputHeight: inputPanelNode.minimalInputHeight())
+        
+        self.startPath = generateTextInputBackgroundPath(size: self.inputTextContainerNode.convertedFrame.size,
+                                                         minimalInputHeight: self.inputTextContainerNode.minimalInputHeight)
+        
+        self.endPath = generateBubbleBackgroundPath(size: chatMessageBackgroundNode.bounds.size,
+                                                    neighborsDirection: chatMessageBackgroundNode.neighborsDirection,
+                                                    minCornerRadius: chatMessageBackgroundNode.chatMessageBackgroundMinCornerRadius,
+                                                    maxCornerRadius: chatMessageBackgroundNode.chatMessageBackgroundMaxCornerRadius)
+        
+        self.tailImage = generateTailImage(maxCornerRadius: chatMessageBackgroundNode.chatMessageBackgroundMaxCornerRadius,
+                                           tailColor: chatMessageBackgroundNode.chatMessageBackgroundFillColor)
         
         self.animatingNode = (startFrame: self.inputTextContainerNode.convertedFrame,
                               endFrame: chatMessageBackgroundNode.view.convert(chatMessageBackgroundNode.view.bounds, to: viewNode.view))
         
-        self.chatMessageNode = (originalDisplaysAsync: chatMessageNode.displaysAsynchronously,
-                                originalShouldAnimateSizeChanges: chatMessageNode.shouldAnimateSizeChanges)
-        
+        let chatMessageTextNodeConverted = chatMessageTextContentNode.view.convert(chatMessageTextContentNode.view.bounds, to: chatMessageMainContainerNode.view)
+        let textInputNode = inputPanelNode.textInputNode!
+        let convertedToBackgroundFrame = chatMessageMainContainerNode.view.convert(chatMessageMainContainerNode.view.bounds, to: chatMessageBackgroundNode.view)
         self.chatMessageMainContainerNode = (originalFrame: chatMessageMainContainerNode.frame,
-                                             convertedFrame: chatMessageMainContainerNode.view.convert(chatMessageMainContainerNode.view.bounds, to: chatMessageBackgroundNode.view),
-                                             originalSubnodeIndex: chatMessageNode.subnodes!.firstIndex(of: chatMessageMainContainerNode)!,
-                                             originalClipsToBounds: chatMessageMainContainerNode.clipsToBounds,
-                                             originalDisplaysAsync: chatMessageMainContainerNode.displaysAsynchronously,
-                                             originalShouldAnimateSizeChanges: chatMessageMainContainerNode.shouldAnimateSizeChanges)
-        
-        self.chatMessageMainContextNode = (originalFrame: chatMessageMainContextNode.frame,
-                                           originalDisplaysAsync: chatMessageMainContextNode.displaysAsynchronously,
-                                           originalShouldAnimateSizeChanges: chatMessageMainContextNode.shouldAnimateSizeChanges)
-        
-        self.chatMessageMainContextContentNode = (originalFrame: chatMessageMainContextContentNode.frame,
-                                                  originalDisplaysAsync: chatMessageMainContextContentNode.displaysAsynchronously,
-                                                  originalShouldAnimateSizeChanges: chatMessageMainContextContentNode.shouldAnimateSizeChanges)
-        
-        self.chatMessageBackgroundNode = (originalFrame: chatMessageBackgroundNode.frame,
-                                          originalDisplaysAsync: chatMessageBackgroundNode.displaysAsynchronously,
-                                          originalShouldAnimateSizeChanges: chatMessageBackgroundNode.shouldAnimateSizeChanges)
-        
-        self.chatMessageTextContentNode = (originalFrame: chatMessageTextContentNode.frame,
-                                           originalDisplaysAsync: chatMessageTextContentNode.displaysAsynchronously,
-                                           originalShouldAnimateSizeChanges: chatMessageTextContentNode.shouldAnimateSizeChanges)
-        
-        self.chatMessageTextNode = (originalFrame: chatMessageTextNode.frame,
-                                    insets: chatMessageTextContentNode.textNodeInsets,
-                                    originalDisplaysAsync: chatMessageTextNode.displaysAsynchronously,
-                                    originalShouldAnimateSizeChanges: chatMessageTextNode.shouldAnimateSizeChanges)
+                                             convertedStartFrame: convertedToBackgroundFrame.offsetBy(dx: (textInputNode.frame.origin.x - chatMessageTextNode.frame.origin.x),
+                                                                                                      dy: -chatMessageTextNodeConverted.origin.y - self.inputTextContainerNode.contentOffset.y),
+                                             convertedEndFrame: convertedToBackgroundFrame,
+                                             originalSubnodeIndex: chatMessageNode.subnodes!.firstIndex(of: chatMessageMainContainerNode)!)
         
         let chatMessageStatusNodeConvertedFrame = chatMessageStatusNode.view.convert(chatMessageStatusNode.view.bounds, to: chatMessageMainContextContentNode.view)
-        let chatMessageStatusNodeOffsetX = chatMessageMainContextContentNode.frame.width - chatMessageStatusNodeConvertedFrame.maxX
+        let chatMessageStatusNodeOffsetX = chatMessageMainContextContentNode.frame.width - chatMessageStatusNodeConvertedFrame.maxX - tailWidth
         let chatMessageStatusNodeOffsetY = chatMessageMainContextContentNode.frame.height - chatMessageStatusNodeConvertedFrame.maxY
+        let chatMessageStatusNodeConvertedStartOrigin = CGPoint(x: self.animatingNode.startFrame.width - chatMessageStatusNodeOffsetX - chatMessageStatusNode.bounds.width,
+                                                                y: self.animatingNode.startFrame.height - chatMessageStatusNodeOffsetY - chatMessageStatusNode.bounds.height)
         self.chatMessageStatusNode = (originalFrame: chatMessageStatusNode.frame,
-                                      offset: CGPoint(x: chatMessageStatusNodeOffsetX, y: chatMessageStatusNodeOffsetY),
+                                      convertedStartFrame: CGRect(origin: chatMessageStatusNodeConvertedStartOrigin, size: chatMessageStatusNode.bounds.size),
+                                      convertedEndFrame: chatMessageStatusNode.view.convert(chatMessageStatusNode.view.bounds, to: chatMessageBackgroundNode.view),
                                       originalAlpha: chatMessageStatusNode.alpha,
-                                      originalDisplaysAsync: chatMessageStatusNode.displaysAsynchronously,
-                                      originalShouldAnimateSizeChanges: chatMessageStatusNode.shouldAnimateSizeChanges)
+                                      originalSupernode: chatMessageStatusNode.supernode!,
+                                      originalSubnodeIndex: chatMessageStatusNode.supernode!.subnodes!.firstIndex(of: chatMessageStatusNode)!)
         
-        self.chatMessageWebpageContentNode = (originalFrame: chatMessageWebpageContentNode?.frame ?? CGRect.zero,
-                                              originalDisplaysAsync: chatMessageWebpageContentNode?.displaysAsynchronously ?? true,
-                                              originalShouldAnimateSizeChanges: chatMessageWebpageContentNode?.shouldAnimateSizeChanges ?? true)
-        
-        self.chatMessageReplyInfoNode = (originalFrame: chatMessageReplyInfoNode?.frame ?? CGRect.zero,
-                                         originalDisplaysAsync: chatMessageReplyInfoNode?.displaysAsynchronously ?? true,
-                                         originalShouldAnimateSizeChanges: chatMessageReplyInfoNode?.shouldAnimateSizeChanges ?? true)
-        
-        self.chatMessageForwardInfoNode = (originalFrame: chatMessageForwardInfoNode?.frame ?? CGRect.zero,
-                                           originalDisplaysAsync: chatMessageForwardInfoNode?.displaysAsynchronously ?? true,
-                                           originalShouldAnimateSizeChanges: chatMessageForwardInfoNode?.shouldAnimateSizeChanges ?? true)
-        
-        self.textInputStyle = (fillColor: inputPanelNode.inputBackgroundColor(),
-                               strokeColor: inputPanelNode.inputStrokeColor(),
-                               minimalInputHeight: inputPanelNode.minimalInputHeight())
-        
-        self.bubbleStyle = (fillColor: chatMessageBackgroundNode.chatMessageBackgroundFillColor,
-                            strokeColor: chatMessageBackgroundNode.chatMessageBackgroundStrokeColor,
-                            minCornerRadius: chatMessageBackgroundNode.chatMessageBackgroundMinCornerRadius,
-                            maxCornerRadius: chatMessageBackgroundNode.chatMessageBackgroundMaxCornerRadius,
-                            neighborsDirection: chatMessageBackgroundNode.neighborsDirection)
+        self.textInputStyle = (cornerRadius: min(self.inputTextContainerNode.minimalInputHeight / 2.0, self.inputTextContainerNode.convertedFrame.height / 2.0),
+                               fillColor: inputPanelNode.inputBackgroundColor(),
+                               strokeColor: inputPanelNode.inputStrokeColor())
     }
 }
 
@@ -174,11 +110,8 @@ fileprivate func toRadians(_ degrees: CGFloat) -> CGFloat {
     degrees * .pi / 180.0
 }
 
-fileprivate func generateTailImage(_ config: Config) -> UIImage {
+fileprivate func generateTailImage(maxCornerRadius: CGFloat, tailColor: UIColor) -> UIImage {
     let size = CGSize(width: 16.0, height: 16.0)
-    let tailColor = config.bubbleStyle.fillColor
-    let maxCornerRadius = config.bubbleStyle.maxCornerRadius
-    let tailWidth: CGFloat = 6.0
     let inset: CGFloat = 1.0 // some random inset, probably to stroke
     let rightInset: CGFloat = tailWidth + inset
     // Should be extracted to some global constant or config
@@ -215,9 +148,9 @@ fileprivate func generateTailImage(_ config: Config) -> UIImage {
     return formContext.generateImage()!
 }
 
-fileprivate func generateTextInputBackgroundPath(_ config: Config, _ size: CGSize) -> UIBezierPath {
+fileprivate func generateTextInputBackgroundPath(size: CGSize, minimalInputHeight: CGFloat) -> UIBezierPath {
     let path = UIBezierPath()
-    let radius: CGFloat = min(config.textInputStyle.minimalInputHeight / 2.0, size.height / 2.0)
+    let radius: CGFloat = min(minimalInputHeight / 2.0, size.height / 2.0)
     
     // Points in corners to draw arcs around
     let topLeftX: CGFloat = radius
@@ -258,24 +191,24 @@ fileprivate func generateTextInputBackgroundPath(_ config: Config, _ size: CGSiz
     return path
 }
 
-fileprivate func generateBubbleBackgroundPath(_ config: Config, _ size: CGSize) -> UIBezierPath {
+fileprivate func generateBubbleBackgroundPath(size: CGSize, neighborsDirection: MessageBubbleImageNeighbors, minCornerRadius: CGFloat, maxCornerRadius: CGFloat) -> UIBezierPath {
     let path = UIBezierPath()
     let topLeftRadius: CGFloat
     let topRightRadius: CGFloat
     let bottomLeftRadius: CGFloat
     let bottomRightRadius: CGFloat
     
-    switch config.bubbleStyle.neighborsDirection {
+    switch neighborsDirection {
     case .bottom:
-        topLeftRadius = config.bubbleStyle.maxCornerRadius
-        topRightRadius = config.bubbleStyle.minCornerRadius
-        bottomLeftRadius = config.bubbleStyle.maxCornerRadius
-        bottomRightRadius = config.bubbleStyle.maxCornerRadius
+        topLeftRadius = maxCornerRadius
+        topRightRadius = minCornerRadius
+        bottomLeftRadius = maxCornerRadius
+        bottomRightRadius = maxCornerRadius
     default:
-        topLeftRadius = config.bubbleStyle.maxCornerRadius
-        topRightRadius = config.bubbleStyle.maxCornerRadius
-        bottomLeftRadius = config.bubbleStyle.maxCornerRadius
-        bottomRightRadius = config.bubbleStyle.maxCornerRadius
+        topLeftRadius = maxCornerRadius
+        topRightRadius = maxCornerRadius
+        bottomLeftRadius = maxCornerRadius
+        bottomRightRadius = maxCornerRadius
     }
     
     let inset: CGFloat = 1.0 // ???
@@ -329,38 +262,50 @@ fileprivate func generateBubbleBackgroundPath(_ config: Config, _ size: CGSize) 
 
 private let animationKey = "ChatMessageAnimations"
 
-fileprivate func updateAnimation(_ animation: CABasicAnimation, duration: Double, timingFunction: ChatAnimationTimingFunction) {
-    animation.duration = Double(timingFunction.duration) * duration
-    animation.timingFunction = CAMediaTimingFunction(controlPoints: Float(timingFunction.controlPoint1.x), Float(timingFunction.controlPoint1.y), Float(timingFunction.controlPoint2.x), Float(timingFunction.controlPoint2.y))
+private func updateAnimation(_ animation: CAKeyframeAnimation, duration: Double, timingFunction: ChatAnimationTimingFunction) {
+    animation.duration = duration
+    animation.timingFunction = CAMediaTimingFunction(
+        controlPoints: Float(timingFunction.controlPoint1.x), Float(timingFunction.controlPoint1.y), Float(timingFunction.controlPoint2.x), Float(timingFunction.controlPoint2.y)
+    )
     animation.isRemovedOnCompletion = false
     animation.fillMode = .forwards
 }
 
-fileprivate func setupResizeAnimation(layer: CALayer, fromSize: CGSize, toSize: CGSize, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CABasicAnimation {
-    let animation = CABasicAnimation(keyPath: "bounds")
-    animation.fromValue = [CGFloat.zero, CGFloat.zero, fromSize.width, fromSize.height]
-    animation.toValue = [CGFloat.zero, CGFloat.zero, toSize.width, toSize.height]
+private func setupResizeAnimation(layer: CALayer, fromSize: CGSize, toSize: CGSize, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAKeyframeAnimation {
+    let animation = CAKeyframeAnimation(keyPath: "bounds")
+    let fromRect = [0.0, 0.0, fromSize.width, fromSize.height]
+    let toRect = [0.0, 0.0, toSize.width, toSize.height]
+    animation.values = [fromRect, fromRect, toRect, toRect]
+    animation.keyTimes = [0, NSNumber(value: Double(timingFunction.startTimeOffset)), NSNumber(value: Double(1.0 - timingFunction.endTimeOffset)), 1]
     updateAnimation(animation, duration: duration, timingFunction: timingFunction)
     return animation
 }
 
-fileprivate func setupRepositionXAnimation(layer: CALayer, fromPosition: CGFloat, toPosition: CGFloat, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CABasicAnimation {
-    let animation = CABasicAnimation(keyPath: "position.x")
-    animation.fromValue = fromPosition
-    animation.toValue = toPosition
+private func setupRepositionXAnimation(layer: CALayer, fromPosition: CGFloat, toPosition: CGFloat, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAKeyframeAnimation {
+    let animation = CAKeyframeAnimation(keyPath: "position.x")
+    animation.values = [fromPosition, fromPosition, toPosition, toPosition]
+    animation.keyTimes = [0, NSNumber(value: Double(timingFunction.startTimeOffset)), NSNumber(value: Double(1.0 - timingFunction.endTimeOffset)), 1]
     updateAnimation(animation, duration: duration, timingFunction: timingFunction)
     return animation
 }
 
-fileprivate func setupRepositionYAnimation(layer: CALayer, fromPosition: CGFloat, toPosition: CGFloat, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CABasicAnimation {
-    let animation = CABasicAnimation(keyPath: "position.y")
-    animation.fromValue = fromPosition
-    animation.toValue = toPosition
+private func setupRepositionYAnimation(layer: CALayer, fromPosition: CGFloat, toPosition: CGFloat, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAKeyframeAnimation {
+    let animation = CAKeyframeAnimation(keyPath: "position.y")
+    animation.values = [fromPosition, fromPosition, toPosition, toPosition]
+    animation.keyTimes = [0, NSNumber(value: Double(timingFunction.startTimeOffset)), NSNumber(value: Double(1.0 - timingFunction.endTimeOffset)), 1]
     updateAnimation(animation, duration: duration, timingFunction: timingFunction)
     return animation
 }
 
-fileprivate func addAnimations(_ layer: CALayer, _ animations: [CAAnimation], duration: Double) {
+private func setupAnimation(keyPath: String, fromValue: Any, toValue: Any, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAKeyframeAnimation {
+    let animation = CAKeyframeAnimation(keyPath: keyPath)
+    animation.values = [fromValue, fromValue, toValue, toValue]
+    animation.keyTimes = [0, NSNumber(value: Double(timingFunction.startTimeOffset)), NSNumber(value: Double(1.0 - timingFunction.endTimeOffset)), 1]
+    updateAnimation(animation, duration: duration, timingFunction: timingFunction)
+    return animation
+}
+
+private func addAnimations(_ layer: CALayer, _ animations: [CAKeyframeAnimation], duration: Double) {
     let animationGroup = CAAnimationGroup()
     animationGroup.animations = animations
     animationGroup.duration = duration
@@ -385,40 +330,30 @@ struct ChatControllerAnimations {
             }
             
             let inputTextContainerNode = inputPanelNode.textInputContainer
-            
             let chatMessageMainContainerNode = chatMessageNode.mainContainerNode
             let chatMessageMainContextNode = chatMessageNode.mainContextSourceNode
             let chatMessageMainContextContentNode = chatMessageMainContextNode.contentNode
             let chatMessageBackgroundNode = chatMessageNode.backgroundNode
             let chatMessageTextNode = chatMessageTextContentNode.textNode
-            
-            let chatMessageWebpageContentNode: ChatMessageWebpageBubbleContentNode? = chatMessageNode.chatMessageWebpageBubbleContentNode
+            let chatMessageWebpageContentNode = chatMessageNode.chatMessageWebpageBubbleContentNode
             let chatMessageStatusNode = chatMessageWebpageContentNode?.contentNode.statusNode ?? chatMessageTextContentNode.statusNode
             
-            let chatMessageReplyInfoNode: ChatMessageReplyInfoNode? = chatMessageNode.replyInfoNode
-            let chatMessageForwardInfoNode: ChatMessageForwardInfoNode? = chatMessageNode.forwardInfoNode
-            
             chatMessageNode.displaysAsynchronously = false
-            chatMessageMainContainerNode.displaysAsynchronously = false
-            chatMessageMainContextNode.displaysAsynchronously = false
-            chatMessageMainContextContentNode.displaysAsynchronously = false
-            chatMessageTextContentNode.displaysAsynchronously = false
-            chatMessageTextNode.displaysAsynchronously = false
-            chatMessageStatusNode.displaysAsynchronously = false
-            chatMessageWebpageContentNode?.displaysAsynchronously = false
-            chatMessageReplyInfoNode?.displaysAsynchronously = false
-            chatMessageForwardInfoNode?.displaysAsynchronously = false
-            
             chatMessageNode.shouldAnimateSizeChanges = false
+            chatMessageMainContainerNode.displaysAsynchronously = false
             chatMessageMainContainerNode.shouldAnimateSizeChanges = false
+            chatMessageMainContextNode.displaysAsynchronously = false
             chatMessageMainContextNode.shouldAnimateSizeChanges = false
+            chatMessageMainContextContentNode.displaysAsynchronously = false
             chatMessageMainContextContentNode.shouldAnimateSizeChanges = false
+            chatMessageTextContentNode.displaysAsynchronously = false
             chatMessageTextContentNode.shouldAnimateSizeChanges = false
+            chatMessageTextNode.displaysAsynchronously = false
             chatMessageTextNode.shouldAnimateSizeChanges = false
-            chatMessageStatusNode.shouldAnimateSizeChanges = false
+            chatMessageWebpageContentNode?.displaysAsynchronously = false
             chatMessageWebpageContentNode?.shouldAnimateSizeChanges = false
-            chatMessageReplyInfoNode?.shouldAnimateSizeChanges = false
-            chatMessageForwardInfoNode?.shouldAnimateSizeChanges = false
+            chatMessageStatusNode.displaysAsynchronously = false
+            chatMessageStatusNode.shouldAnimateSizeChanges = false
             
             // Node Hierarhy
             //
@@ -450,10 +385,7 @@ struct ChatControllerAnimations {
                                 chatMessageBackgroundNode: chatMessageBackgroundNode,
                                 chatMessageTextContentNode: chatMessageTextContentNode,
                                 chatMessageTextNode: chatMessageTextNode,
-                                chatMessageStatusNode: chatMessageStatusNode,
-                                chatMessageWebpageContentNode: chatMessageWebpageContentNode,
-                                chatMessageReplyInfoNode: chatMessageReplyInfoNode,
-                                chatMessageForwardInfoNode: chatMessageForwardInfoNode)
+                                chatMessageStatusNode: chatMessageStatusNode)
             
             let settingsManager = ChatAnimationSettingsManager()
             var settings: ChatAnimationSettingsCommon
@@ -490,8 +422,6 @@ struct ChatControllerAnimations {
             tailNode.displaysAsynchronously = false
             tailNode.shouldAnimateSizeChanges = false
             
-            let tailImage = generateTailImage(config)
-            
             // Prepare all nodes to be places and look exactly like input text view
             do {
                 do { // new nods setup
@@ -508,13 +438,12 @@ struct ChatControllerAnimations {
                     // 2. Instead of UIImage draw a path
                     // 3. Stored prepared image somewhere in "theme.chat"
                     let tailMaskLayer = CALayer()
-                    tailMaskLayer.contents = tailImage.cgImage
-                    tailMaskLayer.frame = CGRect(origin: CGPoint.zero, size: tailImage.size)
+                    tailMaskLayer.contents = config.tailImage.cgImage
+                    tailMaskLayer.frame = CGRect(origin: CGPoint.zero, size: config.tailImage.size)
                     tailNode.layer.mask = tailMaskLayer
-                    tailNode.backgroundColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor
                     animatingNode.insertSubnode(tailNode, belowSubnode: backgroundNode)
                     // TODO: Magic, but only this node's animation doesn't work without soecifying frame here
-                    tailNode.frame = CGRect(origin: CGPoint.zero, size: tailImage.size)
+                    tailNode.frame = CGRect(origin: CGPoint.zero, size: config.tailImage.size)
                     
                     maskShapeLayer.strokeColor = UIColor.black.cgColor
                     maskShapeLayer.fillColor = UIColor.black.cgColor
@@ -525,6 +454,9 @@ struct ChatControllerAnimations {
                 do { // old nodes setup
                     chatMessageMainContainerNode.removeFromSupernode()
                     maskNode.addSubnode(chatMessageMainContainerNode)
+                    
+                    chatMessageStatusNode.removeFromSupernode()
+                    maskNode.addSubnode(chatMessageStatusNode)
                     
                     chatMessageBackgroundNode.isHidden = true
                 }
@@ -538,13 +470,11 @@ struct ChatControllerAnimations {
                                                 weak chatMessageMainContainerNode,
                                                 weak chatMessageMainContextNode,
                                                 weak chatMessageMainContextContentNode,
-                                                weak chatMessageBackgroundNode,
                                                 weak chatMessageTextContentNode,
                                                 weak chatMessageTextNode,
-                                                weak chatMessageStatusNode,
                                                 weak chatMessageWebpageContentNode,
-                                                weak chatMessageReplyInfoNode,
-                                                weak chatMessageForwardInfoNode] in
+                                                weak chatMessageBackgroundNode,
+                                                weak chatMessageStatusNode] in
                 guard let chatMessageNode = chatMessageNode else {
                     completion()
                     return
@@ -553,6 +483,14 @@ struct ChatControllerAnimations {
                 if let chatMessageMainContainerNode = chatMessageMainContainerNode {
                     chatMessageMainContainerNode.removeFromSupernode()
                     chatMessageNode.insertSubnode(chatMessageMainContainerNode, at: config.chatMessageMainContainerNode.originalSubnodeIndex)
+                    chatMessageMainContainerNode.frame = config.chatMessageMainContainerNode.originalFrame
+                }
+                
+                if let chatMessageStatusNode = chatMessageStatusNode {
+                    chatMessageStatusNode.removeFromSupernode()
+                    config.chatMessageStatusNode.originalSupernode.insertSubnode(chatMessageStatusNode, at: config.chatMessageStatusNode.originalSubnodeIndex)
+                    chatMessageStatusNode.frame = config.chatMessageStatusNode.originalFrame
+                    chatMessageStatusNode.alpha = config.chatMessageStatusNode.originalAlpha
                 }
                 
                 chatMessageBackgroundNode?.isHidden = false
@@ -562,36 +500,25 @@ struct ChatControllerAnimations {
                 backgroundNode.removeFromSupernode()
                 tailNode.removeFromSupernode()
                 
+                chatMessageNode.displaysAsynchronously = true
+                chatMessageNode.shouldAnimateSizeChanges = true
+                chatMessageMainContainerNode?.displaysAsynchronously = true
+                chatMessageMainContainerNode?.shouldAnimateSizeChanges = true
+                chatMessageMainContextNode?.displaysAsynchronously = true
+                chatMessageMainContextNode?.shouldAnimateSizeChanges = true
+                chatMessageMainContextContentNode?.displaysAsynchronously = true
+                chatMessageMainContextContentNode?.shouldAnimateSizeChanges = true
+                chatMessageTextContentNode?.displaysAsynchronously = true
+                chatMessageTextContentNode?.shouldAnimateSizeChanges = true
+                chatMessageTextNode?.displaysAsynchronously = true
+                chatMessageTextNode?.shouldAnimateSizeChanges = true
+                chatMessageWebpageContentNode?.displaysAsynchronously = true
+                chatMessageWebpageContentNode?.shouldAnimateSizeChanges = true
+                chatMessageStatusNode?.displaysAsynchronously = true
+                chatMessageStatusNode?.shouldAnimateSizeChanges = true
+                
                 chatMessageMainContainerNode?.layer.removeAnimation(forKey: animationKey)
-                chatMessageMainContextNode?.layer.removeAnimation(forKey: animationKey)
-                chatMessageMainContextContentNode?.layer.removeAnimation(forKey: animationKey)
-                chatMessageBackgroundNode?.layer.removeAnimation(forKey: animationKey)
-                chatMessageTextContentNode?.layer.removeAnimation(forKey: animationKey)
-                chatMessageWebpageContentNode?.layer.removeAnimation(forKey: animationKey)
-                chatMessageReplyInfoNode?.layer.removeAnimation(forKey: animationKey)
-                chatMessageForwardInfoNode?.layer.removeAnimation(forKey: animationKey)
-                
-                chatMessageNode.displaysAsynchronously = config.chatMessageNode.originalDisplaysAsync
-                chatMessageMainContainerNode?.displaysAsynchronously = config.chatMessageMainContainerNode.originalDisplaysAsync
-                chatMessageMainContextNode?.displaysAsynchronously = config.chatMessageMainContextNode.originalDisplaysAsync
-                chatMessageMainContextContentNode?.displaysAsynchronously = config.chatMessageMainContextContentNode.originalDisplaysAsync
-                chatMessageTextContentNode?.displaysAsynchronously = config.chatMessageTextContentNode.originalDisplaysAsync
-                chatMessageTextNode?.displaysAsynchronously = config.chatMessageTextNode.originalDisplaysAsync
-                chatMessageStatusNode?.displaysAsynchronously = config.chatMessageStatusNode.originalDisplaysAsync
-                chatMessageWebpageContentNode?.displaysAsynchronously = config.chatMessageWebpageContentNode.originalDisplaysAsync
-                chatMessageReplyInfoNode?.displaysAsynchronously = config.chatMessageReplyInfoNode.originalDisplaysAsync
-                chatMessageForwardInfoNode?.displaysAsynchronously = config.chatMessageForwardInfoNode.originalDisplaysAsync
-                
-                chatMessageNode.shouldAnimateSizeChanges = config.chatMessageNode.originalShouldAnimateSizeChanges
-                chatMessageMainContainerNode?.shouldAnimateSizeChanges = config.chatMessageMainContainerNode.originalShouldAnimateSizeChanges
-                chatMessageMainContextNode?.shouldAnimateSizeChanges = config.chatMessageMainContextNode.originalShouldAnimateSizeChanges
-                chatMessageMainContextContentNode?.shouldAnimateSizeChanges = config.chatMessageMainContextContentNode.originalShouldAnimateSizeChanges
-                chatMessageTextContentNode?.shouldAnimateSizeChanges = config.chatMessageTextContentNode.originalShouldAnimateSizeChanges
-                chatMessageTextNode?.shouldAnimateSizeChanges = config.chatMessageTextNode.originalShouldAnimateSizeChanges
-                chatMessageStatusNode?.shouldAnimateSizeChanges = config.chatMessageStatusNode.originalShouldAnimateSizeChanges
-                chatMessageWebpageContentNode?.shouldAnimateSizeChanges = config.chatMessageWebpageContentNode.originalShouldAnimateSizeChanges
-                chatMessageReplyInfoNode?.shouldAnimateSizeChanges = config.chatMessageReplyInfoNode.originalShouldAnimateSizeChanges
-                chatMessageForwardInfoNode?.shouldAnimateSizeChanges = config.chatMessageForwardInfoNode.originalShouldAnimateSizeChanges
+                chatMessageStatusNode?.layer.removeAnimation(forKey: animationKey)
                 
                 completion()
             }
@@ -600,6 +527,12 @@ struct ChatControllerAnimations {
                 let fromFrame = config.animatingNode.startFrame
                 let toFrame = config.animatingNode.endFrame
                 
+                let fromTranslateX: CGFloat = 0.0
+                let toTranslateX = (fromFrame.width - toFrame.width) / 2.0 + tailWidth
+
+                let fromTranslateY: CGFloat = 0.0
+                let toTranslateY = (fromFrame.height - toFrame.height) / 2.0
+                                
                 let animations = [
                     setupResizeAnimation(layer: animatingNode.layer,
                                          fromSize: fromFrame.size,
@@ -608,14 +541,24 @@ struct ChatControllerAnimations {
                                          timingFunction: settings.bubbleShapeFunc),
                     setupRepositionXAnimation(layer: animatingNode.layer,
                                               fromPosition: fromFrame.position.x,
-                                              toPosition: toFrame.position.x,
+                                              toPosition: toFrame.position.x - toTranslateX,
                                               duration: animationDuration,
                                               timingFunction: settings.xPositionFunc),
                     setupRepositionYAnimation(layer: animatingNode.layer,
                                               fromPosition: fromFrame.position.y,
-                                              toPosition: toFrame.position.y,
+                                              toPosition: toFrame.position.y - toTranslateY,
                                               duration: animationDuration,
-                                              timingFunction: settings.yPositionFunc)
+                                              timingFunction: settings.yPositionFunc),
+                    setupAnimation(keyPath: "transform.translation.x",
+                                   fromValue: fromTranslateX,
+                                   toValue: toTranslateX,
+                                   duration: animationDuration,
+                                   timingFunction: settings.bubbleShapeFunc),
+                    setupAnimation(keyPath: "transform.translation.y",
+                                   fromValue: fromTranslateY,
+                                   toValue: toTranslateY,
+                                   duration: animationDuration,
+                                   timingFunction: settings.bubbleShapeFunc),
                 ]
                 addAnimations(animatingNode.layer, animations, duration: animationDuration)
             }
@@ -644,16 +587,14 @@ struct ChatControllerAnimations {
                 addAnimations(maskNode.layer, animations, duration: animationDuration)
             }
             
-            let fromPath = generateTextInputBackgroundPath(config, config.inputTextContainerNode.convertedFrame.size).cgPath
-            let toPath = generateBubbleBackgroundPath(config, config.chatMessageBackgroundNode.originalFrame.size).cgPath
-            
             do { // maskShapeLayer
-                let redrawPathAnimation = CABasicAnimation(keyPath: "path")
-                redrawPathAnimation.fromValue = fromPath
-                redrawPathAnimation.toValue = toPath
-                updateAnimation(redrawPathAnimation, duration: animationDuration, timingFunction: settings.bubbleShapeFunc)
-                
-                let animations = [redrawPathAnimation]
+                let animations = [
+                    setupAnimation(keyPath: "path",
+                                   fromValue: config.startPath.cgPath,
+                                   toValue: config.endPath.cgPath,
+                                   duration: animationDuration,
+                                   timingFunction: settings.bubbleShapeFunc)
+                ]
                 addAnimations(maskShapeLayer, animations, duration: animationDuration)
             }
             
@@ -690,52 +631,36 @@ struct ChatControllerAnimations {
                 let fromFillColor = config.textInputStyle.fillColor.cgColor
                 let toFillColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor.cgColor
                 
-                let redrawPathAnimation = CABasicAnimation(keyPath: "path")
-                redrawPathAnimation.fromValue = fromPath
-                redrawPathAnimation.toValue = toPath
-                updateAnimation(redrawPathAnimation, duration: animationDuration, timingFunction: settings.bubbleShapeFunc)
-                
-                let redrawStrokeAnimation = CABasicAnimation(keyPath: "strokeColor")
-                redrawStrokeAnimation.fromValue = fromStrokeColor
-                redrawStrokeAnimation.toValue = toStrokeColor
-                updateAnimation(redrawStrokeAnimation, duration: animationDuration, timingFunction: settings.colorChangeFunc)
-                
-                let redrawFillAnimation = CABasicAnimation(keyPath: "fillColor")
-                redrawFillAnimation.fromValue = fromFillColor
-                redrawFillAnimation.toValue = toFillColor
-                updateAnimation(redrawFillAnimation, duration: animationDuration, timingFunction: settings.colorChangeFunc)
-                
                 let animations = [
-                    redrawPathAnimation,
-                    redrawStrokeAnimation,
-                    redrawFillAnimation
+                    setupAnimation(keyPath: "path",
+                                   fromValue: config.startPath.cgPath,
+                                   toValue: config.endPath.cgPath,
+                                   duration: animationDuration,
+                                   timingFunction: settings.bubbleShapeFunc),
+                    setupAnimation(keyPath: "strokeColor",
+                                   fromValue: fromStrokeColor,
+                                   toValue: toStrokeColor,
+                                   duration: animationDuration,
+                                   timingFunction: settings.bubbleShapeFunc),
+                    setupAnimation(keyPath: "fillColor",
+                                   fromValue: fromFillColor,
+                                   toValue: toFillColor,
+                                   duration: animationDuration,
+                                   timingFunction: settings.colorChangeFunc)
                 ]
                 addAnimations(backgroundShapeLayer, animations, duration: animationDuration)
             }
             
             do { // tailNode
-                let fromFrame = CGRect(origin: CGPoint(x: config.animatingNode.startFrame.width - tailImage.size.width,
-                                                       y: config.animatingNode.startFrame.height - tailImage.size.height * 2.0),
-                                       size: tailImage.size)
-                let toFrame = CGRect(origin: CGPoint(x: config.animatingNode.endFrame.width - tailImage.size.width,
-                                                     y: config.animatingNode.endFrame.height - tailImage.size.height),
-                                     size: tailImage.size)
+                let fromFrame = CGRect(origin: CGPoint(x: config.animatingNode.startFrame.width - config.tailImage.size.width,
+                                                       y: config.animatingNode.startFrame.height - config.tailImage.size.height - config.textInputStyle.cornerRadius),
+                                       size: config.tailImage.size)
+                let toFrame = CGRect(origin: CGPoint(x: config.animatingNode.endFrame.width - config.tailImage.size.width,
+                                                     y: config.animatingNode.endFrame.height - config.tailImage.size.height),
+                                     size: config.tailImage.size)
                 
-                let fromOpacity: CGFloat = 0.0
-                let toOpacity: CGFloat = 1.0
-                
-                let showAnimation = CABasicAnimation(keyPath: "opacity")
-                showAnimation.fromValue = fromOpacity
-                showAnimation.toValue = toOpacity
-                updateAnimation(showAnimation, duration: animationDuration, timingFunction: settings.bubbleShapeFunc)
-                
-                // TODO: Doesn't work, probably because of the mask layer, but backgroundColor is working, which is strange
-                // let fromFillColor = config.textInputStyle.fillColor.cgColor
-                // let toFillColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor.cgColor
-                // let redrawFillAnimation = CABasicAnimation(keyPath: "fillColor")
-                // redrawFillAnimation.fromValue = fromFillColor
-                // redrawFillAnimation.toValue = toFillColor
-                // updateAnimation(redrawFillAnimation, duration: animationDuration, timingFunction: settings.colorChangeFunc)
+                 let fromFillColor = config.textInputStyle.fillColor.cgColor
+                 let toFillColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor.cgColor
                 
                 let animations = [
                     setupRepositionXAnimation(layer: tailNode.layer,
@@ -748,144 +673,44 @@ struct ChatControllerAnimations {
                                               toPosition: toFrame.position.y,
                                               duration: animationDuration,
                                               timingFunction: settings.bubbleShapeFunc),
-                    showAnimation
+                     setupAnimation(keyPath: "backgroundColor",
+                                    fromValue: fromFillColor,
+                                    toValue: toFillColor,
+                                    duration: animationDuration,
+                                    timingFunction: settings.colorChangeFunc)
                 ]
                 addAnimations(tailNode.layer, animations, duration: animationDuration)
             }
-            
+                        
             do { // chatMessageMainContainerNode
-                let fromFrame = config.animatingNode.startFrame.toBounds()
-                let toFrame = config.chatMessageMainContainerNode.convertedFrame
+                // Actually we should calculate difference in insets between text views to match content,
+                // but apparently it is working fine without it. Needs to be investigated.
+                // let insetsOffsetY = config.chatMessageTextNode.insets.top - config.inputTextNode.insets.top
+                // offsetBy(dx: CGFloat.zero, dy: -config.inputTextContainerNode.contentOffset.y)
+                let fromFrame = config.chatMessageMainContainerNode.convertedStartFrame
+                let toFrame = config.chatMessageMainContainerNode.convertedEndFrame
                 
                 let animations = [
-                    setupResizeAnimation(layer: chatMessageMainContainerNode.layer,
-                                         fromSize: fromFrame.size,
-                                         toSize: toFrame.size,
-                                         duration: animationDuration,
-                                         timingFunction: settings.bubbleShapeFunc),
                     setupRepositionXAnimation(layer: chatMessageMainContainerNode.layer,
                                               fromPosition: fromFrame.position.x,
                                               toPosition: toFrame.position.x,
                                               duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc),
+                                              timingFunction: settings.textPositionFunc),
                     setupRepositionYAnimation(layer: chatMessageMainContainerNode.layer,
                                               fromPosition: fromFrame.position.y,
                                               toPosition: toFrame.position.y,
                                               duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc)
+                                              timingFunction: settings.textPositionFunc)
                 ]
                 addAnimations(chatMessageMainContainerNode.layer, animations, duration: animationDuration)
             }
             
-            do { // chatMessageMainContextNode
-                let fromFrame = config.animatingNode.startFrame.toBounds()
-                let toFrame = config.chatMessageMainContextNode.originalFrame
-                
-                let animations = [
-                    setupResizeAnimation(layer: chatMessageMainContextNode.layer,
-                                         fromSize: fromFrame.size,
-                                         toSize: toFrame.size,
-                                         duration: animationDuration,
-                                         timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionXAnimation(layer: chatMessageMainContextNode.layer,
-                                              fromPosition: fromFrame.position.x,
-                                              toPosition: toFrame.position.x,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionYAnimation(layer: chatMessageMainContextNode.layer,
-                                              fromPosition: fromFrame.position.y,
-                                              toPosition: toFrame.position.y,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc)
-                ]
-                addAnimations(chatMessageMainContextNode.layer, animations, duration: animationDuration)
-            }
-            
-            do { // chatMessageMainContextContentNode
-                let fromFrame = config.animatingNode.startFrame.toBounds()
-                let toFrame = config.chatMessageMainContextContentNode.originalFrame
-                
-                let animations = [
-                    setupResizeAnimation(layer: chatMessageMainContextContentNode.layer,
-                                         fromSize: fromFrame.size,
-                                         toSize: toFrame.size,
-                                         duration: animationDuration,
-                                         timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionXAnimation(layer: chatMessageMainContextContentNode.layer,
-                                              fromPosition: fromFrame.position.x,
-                                              toPosition: toFrame.position.x,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionYAnimation(layer: chatMessageMainContextContentNode.layer,
-                                              fromPosition: fromFrame.position.y,
-                                              toPosition: toFrame.position.y,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc)
-                ]
-                addAnimations(chatMessageMainContextContentNode.layer, animations, duration: animationDuration)
-            }
-            
-            do { // chatMessageTextContentNode
-                let fromFrame = config.animatingNode.startFrame.toBounds()
-                let toFrame = config.chatMessageTextContentNode.originalFrame
-                
-                let animations = [
-                    setupResizeAnimation(layer: chatMessageTextContentNode.layer,
-                                         fromSize: fromFrame.size,
-                                         toSize: toFrame.size,
-                                         duration: animationDuration,
-                                         timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionXAnimation(layer: chatMessageTextContentNode.layer,
-                                              fromPosition: fromFrame.position.x,
-                                              toPosition: toFrame.position.x,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionYAnimation(layer: chatMessageTextContentNode.layer,
-                                              fromPosition: fromFrame.position.y,
-                                              toPosition: toFrame.position.y,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc)
-                ]
-                addAnimations(chatMessageTextContentNode.layer, animations, duration: animationDuration)
-            }
-            
-            do { // chatMessageTextNode
-                // Actually we should calculate difference in insets here to match content,
-                // but apparently it is working fine without it. Needs to be investigated.
-                // let insetsOffsetY = config.chatMessageTextNode.insets.top - config.inputTextNode.insets.top
-                let insetsOffsetY: CGFloat = 0.0
-                let fromFrame = chatMessageTextNode.frame.offsetBy(dx: CGFloat.zero, dy: -config.inputTextContainerNode.contentOffset.y + insetsOffsetY)
-                let toFrame = config.chatMessageTextNode.originalFrame
-                
-                let animations = [
-                    setupRepositionXAnimation(layer: chatMessageTextNode.layer,
-                                              fromPosition: fromFrame.position.x,
-                                              toPosition: toFrame.position.x,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionYAnimation(layer: chatMessageTextNode.layer,
-                                              fromPosition: fromFrame.position.y,
-                                              toPosition: toFrame.position.y,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc)
-                ]
-                addAnimations(chatMessageTextNode.layer, animations, duration: animationDuration)
-            }
-            
             do { // chatMessageStatusNode
-                let origin = CGPoint(x: config.animatingNode.startFrame.width - config.chatMessageStatusNode.offset.x - config.chatMessageStatusNode.originalFrame.width,
-                                     y: config.animatingNode.startFrame.height - config.chatMessageStatusNode.offset.y - config.chatMessageStatusNode.originalFrame.height)
-                let convertedOrigin = chatMessageTextContentNode.view.convert(origin, to: chatMessageStatusNode.supernode!.view)
-                let fromFrame = CGRect(origin: convertedOrigin, size: chatMessageStatusNode.bounds.size)
-                let toFrame = config.chatMessageStatusNode.originalFrame
+                let fromFrame = config.chatMessageStatusNode.convertedStartFrame
+                let toFrame = config.chatMessageStatusNode.convertedEndFrame
                 
                 let fromOpacity: CGFloat = 0.0
                 let toOpacity = config.chatMessageStatusNode.originalAlpha
-                
-                let showAnimation = CABasicAnimation(keyPath: "opacity")
-                showAnimation.fromValue = fromOpacity
-                showAnimation.toValue = toOpacity
-                updateAnimation(showAnimation, duration: animationDuration, timingFunction: settings.timeAppearsFunc)
                 
                 let animations = [
                     setupRepositionXAnimation(layer: chatMessageStatusNode.layer,
@@ -898,89 +723,13 @@ struct ChatControllerAnimations {
                                               toPosition: toFrame.position.y,
                                               duration: animationDuration,
                                               timingFunction: settings.bubbleShapeFunc),
-                    showAnimation
+                    setupAnimation(keyPath: "opacity",
+                                   fromValue: fromOpacity,
+                                   toValue: toOpacity,
+                                   duration: animationDuration,
+                                   timingFunction: settings.timeAppearsFunc)
                 ]
                 addAnimations(chatMessageStatusNode.layer, animations, duration: animationDuration)
-            }
-            
-            // chatMessageWebpageContentNode
-            if let chatMessageWebpageContentNode = chatMessageWebpageContentNode {
-                let originalFrame = config.chatMessageWebpageContentNode.originalFrame
-                let fromFrame = CGRect(origin: CGPoint(x: CGFloat.zero, y: originalFrame.minY), size: config.animatingNode.startFrame.size)
-                let toFrame = originalFrame
-                
-                let animations = [
-                    setupResizeAnimation(layer: chatMessageWebpageContentNode.layer,
-                                         fromSize: fromFrame.size,
-                                         toSize: toFrame.size,
-                                         duration: animationDuration,
-                                         timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionXAnimation(layer: chatMessageWebpageContentNode.layer,
-                                              fromPosition: fromFrame.position.x,
-                                              toPosition: toFrame.position.x,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionYAnimation(layer: chatMessageWebpageContentNode.layer,
-                                              fromPosition: fromFrame.position.y,
-                                              toPosition: toFrame.position.y,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc)
-                ]
-                addAnimations(chatMessageWebpageContentNode.layer, animations, duration: animationDuration)
-            }
-            
-            // chatMessageReplyInfoNode
-            if let chatMessageReplyInfoNode = chatMessageReplyInfoNode {
-                let originalFrame = config.chatMessageReplyInfoNode.originalFrame
-                let offsetY = config.chatMessageTextContentNode.originalFrame.minY - originalFrame.minY
-                let fromFrame = CGRect(origin: CGPoint(x: 0.0, y: -offsetY), size: chatMessageReplyInfoNode.bounds.size)
-                let toFrame = originalFrame
-                
-                let animations = [
-                    setupResizeAnimation(layer: chatMessageReplyInfoNode.layer,
-                                         fromSize: fromFrame.size,
-                                         toSize: toFrame.size,
-                                         duration: animationDuration,
-                                         timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionXAnimation(layer: chatMessageReplyInfoNode.layer,
-                                              fromPosition: fromFrame.position.x,
-                                              toPosition: toFrame.position.x,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionYAnimation(layer: chatMessageReplyInfoNode.layer,
-                                              fromPosition: fromFrame.position.y,
-                                              toPosition: toFrame.position.y,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc)
-                ]
-                addAnimations(chatMessageReplyInfoNode.layer, animations, duration: animationDuration)
-            }
-            
-            // chatMessageForwardInfoNode
-            if let chatMessageForwardInfoNode = chatMessageForwardInfoNode {
-                let originalFrame = config.chatMessageForwardInfoNode.originalFrame
-                let offsetY = config.chatMessageTextContentNode.originalFrame.minY - originalFrame.minY
-                let fromFrame = CGRect(origin: CGPoint(x: 0.0, y: -offsetY), size: chatMessageForwardInfoNode.bounds.size)
-                let toFrame = originalFrame
-                
-                let animations = [
-                    setupResizeAnimation(layer: chatMessageForwardInfoNode.layer,
-                                         fromSize: fromFrame.size,
-                                         toSize: toFrame.size,
-                                         duration: animationDuration,
-                                         timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionXAnimation(layer: chatMessageForwardInfoNode.layer,
-                                              fromPosition: fromFrame.position.x,
-                                              toPosition: toFrame.position.x,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc),
-                    setupRepositionYAnimation(layer: chatMessageForwardInfoNode.layer,
-                                              fromPosition: fromFrame.position.y,
-                                              toPosition: toFrame.position.y,
-                                              duration: animationDuration,
-                                              timingFunction: settings.bubbleShapeFunc)
-                ]
-                addAnimations(chatMessageForwardInfoNode.layer, animations, duration: animationDuration)
             }
             
             CATransaction.commit()
