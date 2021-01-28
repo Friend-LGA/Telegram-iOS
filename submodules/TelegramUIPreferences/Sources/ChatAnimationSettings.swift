@@ -58,8 +58,8 @@ final public class ChatAnimationTimingFunction: Codable {
     
     init(startTimeOffset: CGFloat = 0.0,
          endTimeOffset: CGFloat = 0.0,
-         controlPoint1: CGPoint = CGPoint(x: 1.0, y: 0.0),
-         controlPoint2: CGPoint = CGPoint(x: 0.0, y: 1.0)) {
+         controlPoint1: CGPoint = CGPoint(x: 0.5, y: 0.0),
+         controlPoint2: CGPoint = CGPoint(x: 0.5, y: 1.0)) {
         self.startTimeOffset = startTimeOffset
         self.endTimeOffset = endTimeOffset
         self.controlPoint1 = controlPoint1
@@ -109,13 +109,31 @@ final public class ChatAnimationSettingsCommon: ChatAnimationSettings, Codable {
     public var timeAppearsFunc: ChatAnimationTimingFunction
     
     init(_ type: ChatAnimationType,
-         duration: ChatAnimationDuration = ChatAnimationDuration.medium,
-         yPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
-         xPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
-         bubbleShapeFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
-         textPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
-         colorChangeFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
-         timeAppearsFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction()) {
+         duration: ChatAnimationDuration = ChatAnimationDuration.fast,
+         yPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                  endTimeOffset: 0.0,
+                                                                                  controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                  controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         xPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                  endTimeOffset: 0.5,
+                                                                                  controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                  controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         bubbleShapeFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                    endTimeOffset: 0.67,
+                                                                                    controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                    controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         textPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                     endTimeOffset: 0.67,
+                                                                                     controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                     controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         colorChangeFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                    endTimeOffset: 0.5,
+                                                                                    controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                    controlPoint2: CGPoint(x: 0.67, y: 1.0)),
+         timeAppearsFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                    endTimeOffset: 0.5,
+                                                                                    controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                    controlPoint2: CGPoint(x: 0.67, y: 1.0))) {
         self.type = type
         self.duration = duration
         self.yPositionFunc = yPositionFunc
@@ -169,11 +187,23 @@ final public class ChatAnimationSettingsEmoji: ChatAnimationSettings, Codable {
     public var emojiScaleFunc: ChatAnimationTimingFunction
     public var timeAppearsFunc: ChatAnimationTimingFunction
     
-    init(duration: ChatAnimationDuration = ChatAnimationDuration.medium,
-         yPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
-         xPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
-         emojiScaleFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(),
-         timeAppearsFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction()) {
+    init(duration: ChatAnimationDuration = ChatAnimationDuration.fast,
+         yPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                  endTimeOffset: 0.0,
+                                                                                  controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                  controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         xPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                  endTimeOffset: 0.5,
+                                                                                  controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                  controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         emojiScaleFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.17,
+                                                                                   endTimeOffset: 0.5,
+                                                                                   controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                   controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         timeAppearsFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.17,
+                                                                                    endTimeOffset: 0.5,
+                                                                                    controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                    controlPoint2: CGPoint(x: 0.67, y: 1.0))) {
         self.type = ChatAnimationType.emoji
         self.duration = duration
         self.yPositionFunc = yPositionFunc
