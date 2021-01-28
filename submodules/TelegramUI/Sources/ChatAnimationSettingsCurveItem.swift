@@ -15,9 +15,9 @@ private var offsetSliderKnobImage: UIImage?
 private let offsetSliderKnobSize = CGSize(width: 20.0, height: 36.0)
 private let offsetSliderKnobInsetSize = CGSize(width: 12.0, height: 8.0)
 
-private let gapBetweenSliders: Float = 0.2
+private let gapBetweenSliders: Float = 0.16
 private let contentInsets = UIEdgeInsets(top: 16.0, left: 8.0, bottom: 16.0, right: 8.0)
-private let contentHeight: CGFloat = 288.0
+private let contentHeight: CGFloat = 256.0
 private let kindaYellow = UIColor(red: 1.0, green: 0.8, blue: 0.0, alpha: 1.0) // #ffcd00 // rgb(255, 205, 0)
 private let labelsFont = Font.regular(12.0)
 private let labelsOffset: CGFloat = 4.0 // distance between label and a knob
@@ -287,6 +287,7 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
     
     @objc
     private func topSliderValueChanged() {
+        self.topSlider.value = ceil(self.topSlider.value * 100.0) / 100.0
         if let timingFunction = self.timingFunction {
             timingFunction.controlPoint2 = CGPoint(x: CGFloat(1.0 - self.topSlider.value), y: 1.0)
         }
@@ -295,6 +296,7 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
     
     @objc
     private func bottomSliderValueChanged() {
+        self.bottomSlider.value = ceil(self.bottomSlider.value * 100.0) / 100.0
         if let timingFunction = self.timingFunction {
             timingFunction.controlPoint1 = CGPoint(x: CGFloat(self.bottomSlider.value), y: 0.0)
         }
@@ -303,8 +305,15 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
     
     @objc
     private func leftSliderValueChanged() {
-        if self.rightSlider.value - self.leftSlider.value < gapBetweenSliders {
-            self.leftSlider.value = self.rightSlider.value - gapBetweenSliders
+        guard let sliderMaxValue = self.boundsSliderMaxValue else { return }
+        self.leftSlider.value = ceil(self.leftSlider.value * Float(sliderMaxValue)) / Float(sliderMaxValue)
+        let gapBetweenSlidersNormal = ceil(gapBetweenSliders * Float(sliderMaxValue)) / Float(sliderMaxValue)
+        if self.rightSlider.value - self.leftSlider.value < gapBetweenSlidersNormal {
+            if self.rightSlider.value < self.rightSlider.maximumValue {
+                self.rightSlider.value = self.leftSlider.value + gapBetweenSlidersNormal
+            } else {
+                self.leftSlider.value = self.rightSlider.value - gapBetweenSlidersNormal
+            }
         }
         if let timingFunction = self.timingFunction {
             timingFunction.startTimeOffset = CGFloat(self.leftSlider.value)
@@ -314,8 +323,15 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
     
     @objc
     private func rightSliderValueChanged() {
+        guard let sliderMaxValue = self.boundsSliderMaxValue else { return }
+        self.rightSlider.value = ceil(self.rightSlider.value * Float(sliderMaxValue)) / Float(sliderMaxValue)
+        let gapBetweenSlidersNormal = ceil(gapBetweenSliders * Float(sliderMaxValue)) / Float(sliderMaxValue)
         if self.rightSlider.value - self.leftSlider.value < gapBetweenSliders {
-            self.rightSlider.value = self.leftSlider.value + gapBetweenSliders
+            if self.leftSlider.value > self.leftSlider.minimumValue {
+                self.leftSlider.value = self.rightSlider.value - gapBetweenSlidersNormal
+            } else {
+                self.rightSlider.value = self.leftSlider.value + gapBetweenSlidersNormal
+            }
         }
         if let timingFunction = self.timingFunction {
             timingFunction.endTimeOffset = CGFloat(1.0 - self.rightSlider.value)
@@ -362,8 +378,8 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
     private func updateLabelsLayout() {
         guard let boundsSliderMaxValue = self.boundsSliderMaxValue else { return }
         
-        self.topLabel.text = String(format: "%.0f%", self.topSlider.value * 100.0)
-        self.bottomLabel.text = String(format: "%.0f%", self.bottomSlider.value * 100.0)
+        self.topLabel.text = String(format: "%.0f%%", self.topSlider.value * 100.0)
+        self.bottomLabel.text = String(format: "%.0f%%", self.bottomSlider.value * 100.0)
         self.leftLabel.text = String(format: "%.0ff", self.leftSlider.value * Float(boundsSliderMaxValue))
         self.rightLabel.text = String(format: "%.0ff", self.rightSlider.value * Float(boundsSliderMaxValue))
         
@@ -381,12 +397,14 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
                                                                   dy: (controlSliderKnobSize.height / 2.0) + (self.bottomLabel.frame.height / 2.0) + labelsOffset)
         
         let leftThumbRect = self.leftSlider.getThumbRect(self.view)
+        let leftLabelWithOffset = self.leftLabel.frame.width + labelsOffset
+        let isLeftSide = (leftThumbRect.center.x - (offsetSliderKnobSize.width / 2.0)) - self.leftSlider.frame.minX > leftLabelWithOffset
         let leftLabelOffset = (offsetSliderKnobSize.width / 2.0) + (self.leftLabel.frame.width / 2.0) + labelsOffset
-        self.leftLabel.center = leftThumbRect.center.offsetBy(dx: leftLabelOffset, dy: CGFloat.zero)
+        self.leftLabel.center = leftThumbRect.center.offsetBy(dx: (isLeftSide ? -leftLabelOffset : leftLabelOffset), dy: CGFloat.zero)
         
         let rightThumbRect = self.rightSlider.getThumbRect(self.view)
-        let labelWithOffset = self.rightLabel.frame.width + labelsOffset
-        let isRightSide = self.rightSlider.frame.maxX - (rightThumbRect.center.x + (offsetSliderKnobSize.width / 2.0)) > labelWithOffset
+        let rightLabelWithOffset = self.rightLabel.frame.width + labelsOffset
+        let isRightSide = self.rightSlider.frame.maxX - (rightThumbRect.center.x + (offsetSliderKnobSize.width / 2.0)) > rightLabelWithOffset
         let rightLabelOffset = (offsetSliderKnobSize.width / 2.0) + (self.rightLabel.frame.width / 2.0) + labelsOffset
         self.rightLabel.center = rightThumbRect.center.offsetBy(dx: (isRightSide ? rightLabelOffset : -rightLabelOffset), dy: CGFloat.zero)
         
