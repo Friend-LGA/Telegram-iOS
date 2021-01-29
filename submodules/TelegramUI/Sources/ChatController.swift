@@ -6822,6 +6822,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
     
     func updateChatPresentationInterfaceState(transition: ContainedViewLayoutTransition, interactive: Bool, saveInterfaceState: Bool = false, _ f: (ChatPresentationInterfaceState) -> ChatPresentationInterfaceState, completion externalCompletion: @escaping (ContainedViewLayoutTransition) -> Void = { _ in }) {
+        
         var completion = externalCompletion
         var temporaryChatPresentationInterfaceState = f(self.presentationInterfaceState)
         

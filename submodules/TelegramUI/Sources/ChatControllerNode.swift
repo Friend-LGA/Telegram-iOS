@@ -777,6 +777,8 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
     
     func containerLayoutUpdated(_ layout: ContainerViewLayout, navigationBarHeight: CGFloat, transition protoTransition: ContainedViewLayoutTransition, listViewTransaction:
         (ListViewUpdateSizeAndInsets, CGFloat, Bool, @escaping () -> Void) -> Void) {
+        guard ChatControllerAnimations.isAnimating == false else { return }
+        
         let transition: ContainedViewLayoutTransition
         if let _ = self.scheduledAnimateInAsOverlayFromNode {
             transition = .immediate

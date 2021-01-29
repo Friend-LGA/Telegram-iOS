@@ -331,6 +331,9 @@ private func addAnimations(_ layer: CALayer, _ animations: [CAKeyframeAnimation]
 }
 
 class ChatControllerAnimations {
+    static public var isAnimating = false
+    static private var animationsCounter = 0
+    
     private init() {}
     
     static public func getAnimationCallback(chatControllerNode viewNode: ChatControllerNode, shouldAnimateScrollView: Bool) -> ChatHistoryListViewTransition.AnimationCallback {
@@ -407,6 +410,9 @@ class ChatControllerAnimations {
             
             chatMessageNode.isUserInteractionEnabled = false
             listContainerNode.isUserInteractionEnabled = false
+            inputPanelNode.actionButtons.isUserInteractionEnabled = false
+            inputPanelNode.attachmentButton.isUserInteractionEnabled = false
+            inputPanelNode.accessoryItemButtons.forEach({ $0.1.isUserInteractionEnabled = false })
             
             listNode.displaysAsynchronously = false
             listNode.shouldAnimateSizeChanges = false
@@ -498,6 +504,7 @@ class ChatControllerAnimations {
             
             CATransaction.begin()
             CATransaction.setCompletionBlock { [weak listContainerNode,
+                                                weak inputPanelNode,
                                                 weak listNode,
                                                 weak scroller,
                                                 weak chatMessageNode,
@@ -514,6 +521,9 @@ class ChatControllerAnimations {
                     return
                 }
                 
+                listNode?.layer.removeAllAnimations()
+                listContainerNode?.layer.removeAllAnimations()
+                
                 if let chatMessageMainContainerNode = chatMessageMainContainerNode {
                     chatMessageMainContainerNode.removeFromSupernode()
                     chatMessageNode.insertSubnode(chatMessageMainContainerNode, at: config.chatMessageMainContainerNode.originalSubnodeIndex)
@@ -529,6 +539,9 @@ class ChatControllerAnimations {
                 
                 chatMessageNode.isUserInteractionEnabled = true
                 listContainerNode?.isUserInteractionEnabled = true
+                inputPanelNode?.actionButtons.isUserInteractionEnabled = true
+                inputPanelNode?.attachmentButton.isUserInteractionEnabled = true
+                inputPanelNode?.accessoryItemButtons.forEach({ $0.1.isUserInteractionEnabled = true })
                 
                 chatMessageBackgroundNode?.isHidden = false
                 
@@ -568,6 +581,15 @@ class ChatControllerAnimations {
                     listContainerNode?.layer.removeAnimation(forKey: animationKey)
                     listNode?.layer.removeAnimation(forKey: animationKey)
                     scroller?.layer.removeAnimation(forKey: animationKey)
+                }
+                
+                listNode?.layer.removeAllAnimations()
+                listContainerNode?.layer.removeAllAnimations()
+                
+                animationsCounter -= 1
+                print("Subtracted: \(animationsCounter)")
+                if animationsCounter == 0 {
+                    isAnimating = false
                 }
                 
                 completion()
@@ -822,6 +844,10 @@ class ChatControllerAnimations {
                     addAnimations(listContainerNode.layer, animations, duration: animationDuration)
                 }
             }
+            
+            isAnimating = true
+            animationsCounter += 1
+            print("Added: \(animationsCounter)")
             
             CATransaction.commit()
         }
