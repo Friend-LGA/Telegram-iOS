@@ -4197,19 +4197,20 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                             insertItems.append(ListViewInsertItem(index: item.index, previousIndex: item.previousIndex, item: item.item, directionHint: item.directionHint == .Down ? .Up : nil))
                         }
                         
+                        let isScrollAtBottomPosition = strongSelf.chatDisplayNode.historyNode.isScrollAtBottomPosition
                         var animationCallback: ChatHistoryListViewTransition.AnimationCallback?
-                        if case .InteractiveChanges = transition.reason, !transition.insertItems.isEmpty {
+                        if case .InteractiveChanges = transition.reason, transition.insertItems.count == 1 {
                             options.remove(.AnimateAlpha)
                             options.remove(.RequestItemInsertionAnimations)
-                            animationCallback = ChatControllerAnimations.getAnimationCallback(chatControllerNode: strongSelf.chatDisplayNode)
+                            animationCallback = ChatControllerAnimations.getAnimationCallback(chatControllerNode: strongSelf.chatDisplayNode, shouldAnimateScrollView: isScrollAtBottomPosition)
                         }
                         
                         var scrollToItem: ListViewScrollToItem?
                         if isScheduledMessages, let insertedIndex = insertedIndex {
                             scrollToItem = ListViewScrollToItem(index: insertedIndex, position: .visible, animated: true, curve: .Default(duration: 0.2), directionHint: .Down)
                         } else if transition.historyView.originalView.laterId == nil {
-                            let animationCurve: ListViewAnimationCurve = animationCallback != nil ? .Spring(duration: 0.5) : .Default(duration: 0.2)
-                            scrollToItem = ListViewScrollToItem(index: 0, position: .top(0.0), animated: true, curve: animationCurve, directionHint: .Up)
+                            let animated = !(animationCallback != nil && isScrollAtBottomPosition)
+                            scrollToItem = ListViewScrollToItem(index: 0, position: .top(0.0), animated: animated, curve: .Default(duration: (animated ? 0.2 : 0.0)), directionHint: .Up)
                         }
                         
                         var stationaryItemRange: (Int, Int)?

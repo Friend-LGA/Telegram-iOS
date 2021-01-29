@@ -31,6 +31,8 @@ fileprivate struct Config {
                                  insets: UIEdgeInsets,
                                  minimalInputHeight: CGFloat)
     
+    let accessoryPanelFrame: CGRect
+    
     let chatMessageMainContainerNode: (originalFrame: CGRect,
                                        convertedStartFrame: CGRect,
                                        convertedEndFrame: CGRect,
@@ -60,10 +62,12 @@ fileprivate struct Config {
          chatMessageStatusNode: ASDisplayNode) {
         // ASDisplayNode.convert() is giving wrong values, using UIView.convert() instead
         self.inputTextContainerNode = (convertedFrame: viewNode.textInputLastFrame ?? inputTextContainerNode.view.convert(inputTextContainerNode.view.bounds, to: viewNode.view),
-                                       contentOffset: viewNode.textInputLastContentOffset ?? CGPoint.zero,
-                                       contentSize: viewNode.textInputLastContentSize ?? CGSize.zero,
+                                       contentOffset: viewNode.textInputLastContentOffset ?? inputPanelNode.textInputNode?.textView.contentOffset ?? CGPoint.zero,
+                                       contentSize: viewNode.textInputLastContentSize ?? inputPanelNode.textInputNode?.textView.contentSize ?? CGSize.zero,
                                        insets: inputPanelNode.textInputNode?.textContainerInset ?? UIEdgeInsets.zero,
                                        minimalInputHeight: inputPanelNode.minimalInputHeight())
+        
+        self.accessoryPanelFrame = viewNode.accessoryPanelLastFrame ?? CGRect.zero
         
         self.startPath = generateTextInputBackgroundPath(size: self.inputTextContainerNode.convertedFrame.size,
                                                          minimalInputHeight: self.inputTextContainerNode.minimalInputHeight)
@@ -77,7 +81,7 @@ fileprivate struct Config {
                                            tailColor: chatMessageBackgroundNode.chatMessageBackgroundFillColor)
         
         self.animatingNode = (startFrame: self.inputTextContainerNode.convertedFrame,
-                              endFrame: chatMessageBackgroundNode.view.convert(chatMessageBackgroundNode.view.bounds, to: viewNode.view))
+                              endFrame: chatMessageBackgroundNode.view.convert(chatMessageBackgroundNode.view.bounds, to: viewNode.view)) // .offsetBy(dx: CGFloat.zero, dy: -chatMessageNode.bounds.height))
         
         let chatMessageTextNodeConverted = chatMessageTextContentNode.view.convert(chatMessageTextContentNode.view.bounds, to: chatMessageMainContainerNode.view)
         let textInputNode = inputPanelNode.textInputNode!
@@ -314,10 +318,10 @@ private func addAnimations(_ layer: CALayer, _ animations: [CAKeyframeAnimation]
     layer.add(animationGroup, forKey: animationKey)
 }
 
-struct ChatControllerAnimations {
+class ChatControllerAnimations {
     private init() {}
-    
-    static public func getAnimationCallback(chatControllerNode viewNode: ChatControllerNode) -> ChatHistoryListViewTransition.AnimationCallback {
+            
+    static public func getAnimationCallback(chatControllerNode viewNode: ChatControllerNode, shouldAnimateScrollView: Bool) -> ChatHistoryListViewTransition.AnimationCallback {
         return { [weak viewNode = viewNode] (chatMessageNode: ListViewItemNode, completion: (() -> Void)?) in
             let completion = completion ?? {}
             
@@ -329,6 +333,10 @@ struct ChatControllerAnimations {
                 return
             }
             
+            let listNode = viewNode.historyNode
+            let listContainerNode = viewNode.historyNodeContainer
+            let scroller = listNode.scroller
+            
             let inputTextContainerNode = inputPanelNode.textInputContainer
             let chatMessageMainContainerNode = chatMessageNode.mainContainerNode
             let chatMessageMainContextNode = chatMessageNode.mainContextSourceNode
@@ -338,6 +346,10 @@ struct ChatControllerAnimations {
             let chatMessageWebpageContentNode = chatMessageNode.chatMessageWebpageBubbleContentNode
             let chatMessageStatusNode = chatMessageWebpageContentNode?.contentNode.statusNode ?? chatMessageTextContentNode.statusNode
             
+            listNode.displaysAsynchronously = false
+            listNode.shouldAnimateSizeChanges = false
+            listContainerNode.displaysAsynchronously = false
+            listContainerNode.shouldAnimateSizeChanges = false
             chatMessageNode.displaysAsynchronously = false
             chatMessageNode.shouldAnimateSizeChanges = false
             chatMessageMainContainerNode.displaysAsynchronously = false
@@ -465,8 +477,14 @@ struct ChatControllerAnimations {
             // Preparation is done, it's time to go bananaz!!! (... and draw some animations)
             let animationDuration = settings.duration.rawValue
             
+            let listContainerNodeOriginalFrame = listContainerNode.frame
+            let listNodeOriginalFrame = listNode.frame
+            
             CATransaction.begin()
-            CATransaction.setCompletionBlock { [weak chatMessageNode,
+            CATransaction.setCompletionBlock { [weak listContainerNode,
+                                                weak listNode,
+                                                weak scroller,
+                                                weak chatMessageNode,
                                                 weak chatMessageMainContainerNode,
                                                 weak chatMessageMainContextNode,
                                                 weak chatMessageMainContextContentNode,
@@ -500,6 +518,10 @@ struct ChatControllerAnimations {
                 backgroundNode.removeFromSupernode()
                 tailNode.removeFromSupernode()
                 
+                listContainerNode?.displaysAsynchronously = true
+                listContainerNode?.shouldAnimateSizeChanges = true
+                // listNode?.displaysAsynchronously = true
+                listNode?.shouldAnimateSizeChanges = true
                 chatMessageNode.displaysAsynchronously = true
                 chatMessageNode.shouldAnimateSizeChanges = true
                 chatMessageMainContainerNode?.displaysAsynchronously = true
@@ -519,6 +541,15 @@ struct ChatControllerAnimations {
                 
                 chatMessageMainContainerNode?.layer.removeAnimation(forKey: animationKey)
                 chatMessageStatusNode?.layer.removeAnimation(forKey: animationKey)
+                
+                if shouldAnimateScrollView {
+                    listContainerNode?.frame = listContainerNodeOriginalFrame
+                    listNode?.frame = listNodeOriginalFrame
+                    
+                    listContainerNode?.layer.removeAnimation(forKey: animationKey)
+                    listNode?.layer.removeAnimation(forKey: animationKey)
+                    scroller?.layer.removeAnimation(forKey: animationKey)
+                }
                 
                 completion()
             }
@@ -732,6 +763,47 @@ struct ChatControllerAnimations {
                 addAnimations(chatMessageStatusNode.layer, animations, duration: animationDuration)
             }
             
+            // And finally, scroll view!
+            if shouldAnimateScrollView {
+                do { // listContainerNode
+                    listContainerNode.layer.removeAllAnimations()
+                    listNode.layer.removeAllAnimations()
+                    let difference = config.inputTextContainerNode.convertedFrame.height - inputTextContainerNode.bounds.height + config.accessoryPanelFrame.height
+                    
+                    let fromFrame = CGRect(x: listContainerNodeOriginalFrame.origin.x,
+                                           y: listContainerNodeOriginalFrame.origin.y + chatMessageNode.bounds.height - difference - 2.0 - viewNode.bounds.height,
+                                           width: listContainerNodeOriginalFrame.width,
+                                           height: listContainerNodeOriginalFrame.height + viewNode.bounds.height)
+                    
+                    let toFrame = fromFrame.offsetBy(dx: CGFloat.zero, dy: -chatMessageNode.bounds.height + difference + 2.0)
+                    
+                    listContainerNode.frame = fromFrame
+                    listNode.frame = CGRect(x: listNode.frame.origin.x,
+                                            y: listNode.frame.origin.y,
+                                            width: listNode.frame.size.width,
+                                            height: listNode.frame.height + viewNode.bounds.height)
+                    
+                    let fromTranslateY: CGFloat = 0.0
+                    let toTranslateY = -(config.animatingNode.endFrame.height - (config.animatingNode.startFrame.height + config.accessoryPanelFrame.height))
+                    
+                    let animations = [
+                        setupRepositionYAnimation(layer: listContainerNode.layer,
+                                                  fromPosition: fromFrame.position.y,
+                                                  toPosition: toFrame.position.y - toTranslateY,
+                                                  duration: animationDuration,
+                                                  timingFunction: settings.yPositionFunc),
+                        setupAnimation(keyPath: "transform.translation.y",
+                                       fromValue: fromTranslateY,
+                                       toValue: toTranslateY,
+                                       duration: animationDuration,
+                                       timingFunction: settings.bubbleShapeFunc),
+                    ]
+                    listNode.layer.removeAllAnimations()
+                    listContainerNode.layer.removeAllAnimations()
+                    addAnimations(listContainerNode.layer, animations, duration: animationDuration)
+                }
+            }
+
             CATransaction.commit()
         }
     }
