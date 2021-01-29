@@ -276,35 +276,47 @@ private func updateAnimation(_ animation: CAKeyframeAnimation, duration: Double,
 }
 
 private func setupResizeAnimation(layer: CALayer, fromSize: CGSize, toSize: CGSize, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAKeyframeAnimation {
+    let fromRect = NSValue(cgRect: CGRect(x: 0.0, y: 0.0, width: fromSize.width, height: fromSize.height))
+    let toRect = NSValue(cgRect: CGRect(x: 0.0, y: 0.0, width: toSize.width, height: toSize.height))
+    let controlPoint1 = NSNumber(value: Double(timingFunction.startTimeOffset))
+    let controlPoint2 = NSNumber(value: Double(1.0 - timingFunction.endTimeOffset))
+    
     let animation = CAKeyframeAnimation(keyPath: "bounds")
-    let fromRect = [0.0, 0.0, fromSize.width, fromSize.height]
-    let toRect = [0.0, 0.0, toSize.width, toSize.height]
     animation.values = [fromRect, fromRect, toRect, toRect]
-    animation.keyTimes = [0, NSNumber(value: Double(timingFunction.startTimeOffset)), NSNumber(value: Double(1.0 - timingFunction.endTimeOffset)), 1]
+    animation.keyTimes = [0.0, controlPoint1, controlPoint2, 1.0]
     updateAnimation(animation, duration: duration, timingFunction: timingFunction)
     return animation
 }
 
 private func setupRepositionXAnimation(layer: CALayer, fromPosition: CGFloat, toPosition: CGFloat, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAKeyframeAnimation {
+    let controlPoint1 = NSNumber(value: Double(timingFunction.startTimeOffset))
+    let controlPoint2 = NSNumber(value: Double(1.0 - timingFunction.endTimeOffset))
+    
     let animation = CAKeyframeAnimation(keyPath: "position.x")
     animation.values = [fromPosition, fromPosition, toPosition, toPosition]
-    animation.keyTimes = [0, NSNumber(value: Double(timingFunction.startTimeOffset)), NSNumber(value: Double(1.0 - timingFunction.endTimeOffset)), 1]
+    animation.keyTimes = [0.0, controlPoint1, controlPoint2, 1.0]
     updateAnimation(animation, duration: duration, timingFunction: timingFunction)
     return animation
 }
 
 private func setupRepositionYAnimation(layer: CALayer, fromPosition: CGFloat, toPosition: CGFloat, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAKeyframeAnimation {
+    let controlPoint1 = NSNumber(value: Double(timingFunction.startTimeOffset))
+    let controlPoint2 = NSNumber(value: Double(1.0 - timingFunction.endTimeOffset))
+    
     let animation = CAKeyframeAnimation(keyPath: "position.y")
     animation.values = [fromPosition, fromPosition, toPosition, toPosition]
-    animation.keyTimes = [0, NSNumber(value: Double(timingFunction.startTimeOffset)), NSNumber(value: Double(1.0 - timingFunction.endTimeOffset)), 1]
+    animation.keyTimes = [0.0, controlPoint1, controlPoint2, 1.0]
     updateAnimation(animation, duration: duration, timingFunction: timingFunction)
     return animation
 }
 
 private func setupAnimation(keyPath: String, fromValue: Any, toValue: Any, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAKeyframeAnimation {
+    let controlPoint1 = NSNumber(value: Double(timingFunction.startTimeOffset))
+    let controlPoint2 = NSNumber(value: Double(1.0 - timingFunction.endTimeOffset))
+    
     let animation = CAKeyframeAnimation(keyPath: keyPath)
     animation.values = [fromValue, fromValue, toValue, toValue]
-    animation.keyTimes = [0, NSNumber(value: Double(timingFunction.startTimeOffset)), NSNumber(value: Double(1.0 - timingFunction.endTimeOffset)), 1]
+    animation.keyTimes = [0.0, controlPoint1, controlPoint2, 1.0]
     updateAnimation(animation, duration: duration, timingFunction: timingFunction)
     return animation
 }
@@ -320,7 +332,7 @@ private func addAnimations(_ layer: CALayer, _ animations: [CAKeyframeAnimation]
 
 class ChatControllerAnimations {
     private init() {}
-            
+    
     static public func getAnimationCallback(chatControllerNode viewNode: ChatControllerNode, shouldAnimateScrollView: Bool) -> ChatHistoryListViewTransition.AnimationCallback {
         return { [weak viewNode = viewNode] (chatMessageNode: ListViewItemNode, completion: (() -> Void)?) in
             let completion = completion ?? {}
@@ -345,27 +357,6 @@ class ChatControllerAnimations {
             let chatMessageTextNode = chatMessageTextContentNode.textNode
             let chatMessageWebpageContentNode = chatMessageNode.chatMessageWebpageBubbleContentNode
             let chatMessageStatusNode = chatMessageWebpageContentNode?.contentNode.statusNode ?? chatMessageTextContentNode.statusNode
-            
-            listNode.displaysAsynchronously = false
-            listNode.shouldAnimateSizeChanges = false
-            listContainerNode.displaysAsynchronously = false
-            listContainerNode.shouldAnimateSizeChanges = false
-            chatMessageNode.displaysAsynchronously = false
-            chatMessageNode.shouldAnimateSizeChanges = false
-            chatMessageMainContainerNode.displaysAsynchronously = false
-            chatMessageMainContainerNode.shouldAnimateSizeChanges = false
-            chatMessageMainContextNode.displaysAsynchronously = false
-            chatMessageMainContextNode.shouldAnimateSizeChanges = false
-            chatMessageMainContextContentNode.displaysAsynchronously = false
-            chatMessageMainContextContentNode.shouldAnimateSizeChanges = false
-            chatMessageTextContentNode.displaysAsynchronously = false
-            chatMessageTextContentNode.shouldAnimateSizeChanges = false
-            chatMessageTextNode.displaysAsynchronously = false
-            chatMessageTextNode.shouldAnimateSizeChanges = false
-            chatMessageWebpageContentNode?.displaysAsynchronously = false
-            chatMessageWebpageContentNode?.shouldAnimateSizeChanges = false
-            chatMessageStatusNode.displaysAsynchronously = false
-            chatMessageStatusNode.shouldAnimateSizeChanges = false
             
             // Node Hierarhy
             //
@@ -414,9 +405,34 @@ class ChatControllerAnimations {
                 }
             }
             
+            chatMessageNode.isUserInteractionEnabled = false
+            listContainerNode.isUserInteractionEnabled = false
+            
+            listNode.displaysAsynchronously = false
+            listNode.shouldAnimateSizeChanges = false
+            listContainerNode.displaysAsynchronously = false
+            listContainerNode.shouldAnimateSizeChanges = false
+            chatMessageNode.displaysAsynchronously = false
+            chatMessageNode.shouldAnimateSizeChanges = false
+            chatMessageMainContainerNode.displaysAsynchronously = false
+            chatMessageMainContainerNode.shouldAnimateSizeChanges = false
+            chatMessageMainContextNode.displaysAsynchronously = false
+            chatMessageMainContextNode.shouldAnimateSizeChanges = false
+            chatMessageMainContextContentNode.displaysAsynchronously = false
+            chatMessageMainContextContentNode.shouldAnimateSizeChanges = false
+            chatMessageTextContentNode.displaysAsynchronously = false
+            chatMessageTextContentNode.shouldAnimateSizeChanges = false
+            chatMessageTextNode.displaysAsynchronously = false
+            chatMessageTextNode.shouldAnimateSizeChanges = false
+            chatMessageWebpageContentNode?.displaysAsynchronously = false
+            chatMessageWebpageContentNode?.shouldAnimateSizeChanges = false
+            chatMessageStatusNode.displaysAsynchronously = false
+            chatMessageStatusNode.shouldAnimateSizeChanges = false
+            
             let animatingNode = ASDisplayNode()
             animatingNode.displaysAsynchronously = false
             animatingNode.shouldAnimateSizeChanges = false
+            animatingNode.isUserInteractionEnabled = false
             
             let maskNode = ASDisplayNode()
             maskNode.displaysAsynchronously = false
@@ -511,6 +527,9 @@ class ChatControllerAnimations {
                     chatMessageStatusNode.alpha = config.chatMessageStatusNode.originalAlpha
                 }
                 
+                chatMessageNode.isUserInteractionEnabled = true
+                listContainerNode?.isUserInteractionEnabled = true
+                
                 chatMessageBackgroundNode?.isHidden = false
                 
                 animatingNode.removeFromSupernode()
@@ -560,10 +579,10 @@ class ChatControllerAnimations {
                 
                 let fromTranslateX: CGFloat = 0.0
                 let toTranslateX = (fromFrame.width - toFrame.width) / 2.0 + tailWidth
-
+                
                 let fromTranslateY: CGFloat = 0.0
                 let toTranslateY = (fromFrame.height - toFrame.height) / 2.0
-                                
+                
                 let animations = [
                     setupResizeAnimation(layer: animatingNode.layer,
                                          fromSize: fromFrame.size,
@@ -690,8 +709,8 @@ class ChatControllerAnimations {
                                                      y: config.animatingNode.endFrame.height - config.tailImage.size.height),
                                      size: config.tailImage.size)
                 
-                 let fromFillColor = config.textInputStyle.fillColor.cgColor
-                 let toFillColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor.cgColor
+                let fromFillColor = config.textInputStyle.fillColor.cgColor
+                let toFillColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor.cgColor
                 
                 let animations = [
                     setupRepositionXAnimation(layer: tailNode.layer,
@@ -704,15 +723,15 @@ class ChatControllerAnimations {
                                               toPosition: toFrame.position.y,
                                               duration: animationDuration,
                                               timingFunction: settings.bubbleShapeFunc),
-                     setupAnimation(keyPath: "backgroundColor",
-                                    fromValue: fromFillColor,
-                                    toValue: toFillColor,
-                                    duration: animationDuration,
-                                    timingFunction: settings.colorChangeFunc)
+                    setupAnimation(keyPath: "backgroundColor",
+                                   fromValue: fromFillColor,
+                                   toValue: toFillColor,
+                                   duration: animationDuration,
+                                   timingFunction: settings.colorChangeFunc)
                 ]
                 addAnimations(tailNode.layer, animations, duration: animationDuration)
             }
-                        
+            
             do { // chatMessageMainContainerNode
                 // Actually we should calculate difference in insets between text views to match content,
                 // but apparently it is working fine without it. Needs to be investigated.
@@ -803,7 +822,7 @@ class ChatControllerAnimations {
                     addAnimations(listContainerNode.layer, animations, duration: animationDuration)
                 }
             }
-
+            
             CATransaction.commit()
         }
     }
