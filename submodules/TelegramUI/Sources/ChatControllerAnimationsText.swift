@@ -270,13 +270,9 @@ public class ChatControllerAnimationsText {
     static func animateText(chatControllerNode viewNode: ChatControllerNode,
                             inputPanelNode: ChatTextInputPanelNode,
                             chatMessageNode: ChatMessageBubbleItemNode,
+                            chatMessageTextContentNode: ChatMessageTextBubbleContentNode,
                             shouldAnimateScrollView: Bool,
-                            completion: (() -> Void)?) {
-        guard let chatMessageTextContentNode = chatMessageNode.chatMessageTextBubbleContentNode else {
-            completion?()
-            return
-        }
-        
+                            completion: (() -> Void)?) {        
         let listNode = viewNode.historyNode
         let listContainerNode = viewNode.historyNodeContainer
         let inputTextContainerNode = inputPanelNode.textInputContainer
@@ -524,18 +520,15 @@ public class ChatControllerAnimationsText {
             let toTranslateY = (fromFrame.height - toFrame.height) / 2.0
             
             let animations = [
-                ChatControllerAnimations.setupResizeAnimation(layer: animatingNode.layer,
-                                                              fromSize: fromFrame.size,
+                ChatControllerAnimations.setupResizeAnimation(fromSize: fromFrame.size,
                                                               toSize: toFrame.size,
                                                               duration: animationDuration,
                                                               timingFunction: settings.bubbleShapeFunc),
-                ChatControllerAnimations.setupRepositionXAnimation(layer: animatingNode.layer,
-                                                                   fromPosition: fromFrame.position.x,
+                ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x - toTranslateX,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.xPositionFunc),
-                ChatControllerAnimations.setupRepositionYAnimation(layer: animatingNode.layer,
-                                                                   fromPosition: fromFrame.position.y,
+                ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                    toPosition: toFrame.position.y - toTranslateY,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.yPositionFunc),
@@ -558,18 +551,15 @@ public class ChatControllerAnimationsText {
             let toFrame = config.animatingNode.endFrame.toBounds()
             
             let animations = [
-                ChatControllerAnimations.setupResizeAnimation(layer: maskNode.layer,
-                                                              fromSize: fromFrame.size,
+                ChatControllerAnimations.setupResizeAnimation(fromSize: fromFrame.size,
                                                               toSize: toFrame.size,
                                                               duration: animationDuration,
                                                               timingFunction: settings.bubbleShapeFunc),
-                ChatControllerAnimations.setupRepositionXAnimation(layer: maskNode.layer,
-                                                                   fromPosition: fromFrame.position.x,
+                ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.bubbleShapeFunc),
-                ChatControllerAnimations.setupRepositionYAnimation(layer: maskNode.layer,
-                                                                   fromPosition: fromFrame.position.y,
+                ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                    toPosition: toFrame.position.y,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.bubbleShapeFunc),
@@ -593,18 +583,15 @@ public class ChatControllerAnimationsText {
             let toFrame = config.animatingNode.endFrame.toBounds()
             
             let animations = [
-                ChatControllerAnimations.setupResizeAnimation(layer: backgroundNode.layer,
-                                                              fromSize: fromFrame.size,
+                ChatControllerAnimations.setupResizeAnimation(fromSize: fromFrame.size,
                                                               toSize: toFrame.size,
                                                               duration: animationDuration,
                                                               timingFunction: settings.bubbleShapeFunc),
-                ChatControllerAnimations.setupRepositionXAnimation(layer: backgroundNode.layer,
-                                                                   fromPosition: fromFrame.position.x,
+                ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.bubbleShapeFunc),
-                ChatControllerAnimations.setupRepositionYAnimation(layer: backgroundNode.layer,
-                                                                   fromPosition: fromFrame.position.y,
+                ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                    toPosition: toFrame.position.y,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.bubbleShapeFunc),
@@ -653,13 +640,11 @@ public class ChatControllerAnimationsText {
             let toFillColor = chatMessageBackgroundNode.chatMessageBackgroundFillColor.cgColor
             
             let animations = [
-                ChatControllerAnimations.setupRepositionXAnimation(layer: tailNode.layer,
-                                                                   fromPosition: fromFrame.position.x,
+                ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.bubbleShapeFunc),
-                ChatControllerAnimations.setupRepositionYAnimation(layer: tailNode.layer,
-                                                                   fromPosition: fromFrame.position.y,
+                ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                    toPosition: toFrame.position.y,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.bubbleShapeFunc),
@@ -681,13 +666,11 @@ public class ChatControllerAnimationsText {
             let toFrame = config.chatMessageMainContainerNode.convertedEndFrame
             
             let animations = [
-                ChatControllerAnimations.setupRepositionXAnimation(layer: chatMessageMainContainerNode.layer,
-                                                                   fromPosition: fromFrame.position.x,
+                ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.textPositionFunc),
-                ChatControllerAnimations.setupRepositionYAnimation(layer: chatMessageMainContainerNode.layer,
-                                                                   fromPosition: fromFrame.position.y,
+                ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                    toPosition: toFrame.position.y,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.textPositionFunc)
@@ -703,13 +686,11 @@ public class ChatControllerAnimationsText {
             let toOpacity = config.chatMessageStatusNode.originalAlpha
             
             let animations = [
-                ChatControllerAnimations.setupRepositionXAnimation(layer: chatMessageStatusNode.layer,
-                                                                   fromPosition: fromFrame.position.x,
+                ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.bubbleShapeFunc),
-                ChatControllerAnimations.setupRepositionYAnimation(layer: chatMessageStatusNode.layer,
-                                                                   fromPosition: fromFrame.position.y,
+                ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                    toPosition: toFrame.position.y,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.bubbleShapeFunc),
@@ -746,8 +727,7 @@ public class ChatControllerAnimationsText {
                 let toTranslateY = -(config.animatingNode.endFrame.height - (config.animatingNode.startFrame.height + config.accessoryPanelFrame.height))
                 
                 let animations = [
-                    ChatControllerAnimations.setupRepositionYAnimation(layer: listContainerNode.layer,
-                                                                       fromPosition: fromFrame.position.y,
+                    ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                        toPosition: toFrame.position.y - toTranslateY,
                                                                        duration: animationDuration,
                                                                        timingFunction: settings.yPositionFunc),

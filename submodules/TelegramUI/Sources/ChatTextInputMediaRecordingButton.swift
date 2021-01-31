@@ -234,7 +234,7 @@ final class ChatTextInputMediaRecordingButton: TGModernConversationInputMicButto
         }
     }
     
-    private lazy var micDecoration: (UIView & TGModernConversationInputMicButtonDecoration) = {
+    public lazy var micDecoration: VoiceBlobView = {
         let blobView = VoiceBlobView(
             frame: CGRect(origin: CGPoint(), size: CGSize(width: 220.0, height: 220.0)),
             maxLevel: 4,

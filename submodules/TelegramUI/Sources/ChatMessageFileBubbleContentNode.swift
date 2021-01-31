@@ -9,7 +9,7 @@ import SyncCore
 import TelegramUIPreferences
 
 class ChatMessageFileBubbleContentNode: ChatMessageBubbleContentNode {
-    private let interactiveFileNode: ChatMessageInteractiveFileNode
+    public let interactiveFileNode: ChatMessageInteractiveFileNode
     
     override var visibility: ListViewItemNodeVisibility {
         didSet {

@@ -354,7 +354,7 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
     private var hapticFeedback: HapticFeedback?
     private var scrollViewDismissStatus = false
     
-    var chatPresentationInterfaceState: ChatPresentationInterfaceState
+    public var chatPresentationInterfaceState: ChatPresentationInterfaceState
     var automaticMediaDownloadSettings: MediaAutoDownloadSettings
     
     private var interactiveEmojis: InteractiveEmojiConfiguration?

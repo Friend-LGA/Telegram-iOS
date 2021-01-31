@@ -383,7 +383,7 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
     
     private var contentContainersWrapperNode: ASDisplayNode
     private var contentContainers: [ContentContainer] = []
-    private(set) var contentNodes: [ChatMessageBubbleContentNode] = []
+    public private(set) var contentNodes: [ChatMessageBubbleContentNode] = []
     private var mosaicStatusNode: ChatMessageDateAndStatusNode?
     private var actionButtonsNode: ChatMessageActionButtonsNode?
     
@@ -551,6 +551,16 @@ class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewItemNode
         }
 
         return result as? ChatMessageTextBubbleContentNode
+    }
+    
+    public var chatMessageFileBubbleContentNode: ChatMessageFileBubbleContentNode? {
+        guard !self.contentNodes.isEmpty else { return nil }
+
+        let result = self.contentNodes.first { (contentNode) -> Bool in
+            return contentNode is ChatMessageFileBubbleContentNode
+        }
+
+        return result as? ChatMessageFileBubbleContentNode
     }
     
     public var chatMessageWebpageBubbleContentNode: ChatMessageWebpageBubbleContentNode? {

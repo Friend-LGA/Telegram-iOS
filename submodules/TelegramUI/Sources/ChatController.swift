@@ -4208,7 +4208,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                         if case .InteractiveChanges = transition.reason, transition.insertItems.count == 1 {
                             options.remove(.AnimateAlpha)
                             options.remove(.RequestItemInsertionAnimations)
-                            animationCallback = ChatControllerAnimations.getAnimationCallback(chatControllerNode: strongSelf.chatDisplayNode, shouldAnimateScrollView: isScrollAtBottomPosition)
+                            animationCallback = ChatControllerAnimations.getAnimationCallback(chatControllerNode: strongSelf.chatDisplayNode, shouldAnimateScrollView: isScrollAtBottomPosition, presentationData: strongSelf.presentationData)
                         }
                         
                         var scrollToItem: ListViewScrollToItem?

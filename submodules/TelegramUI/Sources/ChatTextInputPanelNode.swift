@@ -439,6 +439,14 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
             if let strongSelf = self, let interfaceState = strongSelf.presentationInterfaceState, let interfaceInteraction = strongSelf.interfaceInteraction {
                 if let _ = interfaceState.inputTextPanelState.mediaRecordingState {
                     if sendMedia {
+                        let micDecoration = strongSelf.actionButtons.micButton.micDecoration
+                        let snapshotView = micDecoration.snapshotView(afterScreenUpdates: false)!
+                        snapshotView.layer.zPosition = CGFloat(MAXFLOAT)
+                        ChatControllerAnimations.voiceBlobView = snapshotView
+                        ChatControllerAnimations.voiceBlobViewFrame = micDecoration.frame
+                        UIApplication.shared.windows.last?.addSubview(snapshotView)
+                        snapshotView.frame = micDecoration.frame
+                        
                         interfaceInteraction.finishMediaRecording(.send)
                     } else {
                         interfaceInteraction.finishMediaRecording(.dismiss)

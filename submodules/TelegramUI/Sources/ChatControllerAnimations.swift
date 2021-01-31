@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 import Display
 import TelegramUIPreferences
+import TelegramPresentationData
 
 class ChatControllerAnimations {
     static public var isAnimating = false
@@ -9,6 +10,8 @@ class ChatControllerAnimations {
     static public let animationKey = "ChatMessageAnimations"
     static public private(set) weak var lastStickerImageNode: TransformImageNode? = nil
     static public var lastReplyLineNodeFrame: CGRect? = nil
+    static public var voiceBlobView: UIView? = nil
+    static public var voiceBlobViewFrame: CGRect? = nil
     
     static public func setLastStickerImageNode(node: TransformImageNode) {
         lastStickerImageNode = node
@@ -31,7 +34,7 @@ class ChatControllerAnimations {
         }
     }
     
-    static public func setupResizeAnimation(layer: CALayer, fromSize: CGSize, toSize: CGSize, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAKeyframeAnimation {
+    static public func setupResizeAnimation(fromSize: CGSize, toSize: CGSize, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAAnimation {
         let fromRect = NSValue(cgRect: CGRect(x: 0.0, y: 0.0, width: fromSize.width, height: fromSize.height))
         let toRect = NSValue(cgRect: CGRect(x: 0.0, y: 0.0, width: toSize.width, height: toSize.height))
         let controlPoint1 = NSNumber(value: Double(timingFunction.startTimeOffset))
@@ -44,7 +47,7 @@ class ChatControllerAnimations {
         return animation
     }
     
-    static public func setupRepositionXAnimation(layer: CALayer, fromPosition: CGFloat, toPosition: CGFloat, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAKeyframeAnimation {
+    static public func setupRepositionXAnimation(fromPosition: CGFloat, toPosition: CGFloat, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAAnimation {
         let controlPoint1 = NSNumber(value: Double(timingFunction.startTimeOffset))
         let controlPoint2 = NSNumber(value: Double(1.0 - timingFunction.endTimeOffset))
         
@@ -55,7 +58,7 @@ class ChatControllerAnimations {
         return animation
     }
     
-    static public func setupRepositionYAnimation(layer: CALayer, fromPosition: CGFloat, toPosition: CGFloat, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAKeyframeAnimation {
+    static public func setupRepositionYAnimation(fromPosition: CGFloat, toPosition: CGFloat, duration: Double, timingFunction: ChatAnimationTimingFunction) -> CAAnimation {
         let controlPoint1 = NSNumber(value: Double(timingFunction.startTimeOffset))
         let controlPoint2 = NSNumber(value: Double(1.0 - timingFunction.endTimeOffset))
         
@@ -66,7 +69,7 @@ class ChatControllerAnimations {
         return animation
     }
     
-    static public func setupAnimation(keyPath: String, fromValue: Any, toValue: Any, duration: Double, timingFunction: ChatAnimationTimingFunction, isRemovedOnCompletion: Bool = false) -> CAKeyframeAnimation {
+    static public func setupAnimation(keyPath: String, fromValue: Any, toValue: Any, duration: Double, timingFunction: ChatAnimationTimingFunction, isRemovedOnCompletion: Bool = false) -> CAAnimation {
         let controlPoint1 = NSNumber(value: Double(timingFunction.startTimeOffset))
         let controlPoint2 = NSNumber(value: Double(1.0 - timingFunction.endTimeOffset))
         
@@ -77,7 +80,7 @@ class ChatControllerAnimations {
         return animation
     }
     
-    static public func setupAnimation(keyPath: String, fromValue: Any, toValue: Any, duration: Double, isRemovedOnCompletion: Bool = false) -> CABasicAnimation {
+    static public func setupAnimation(keyPath: String, fromValue: Any, toValue: Any, duration: Double, isRemovedOnCompletion: Bool = false) -> CAAnimation {
         let animation = CABasicAnimation(keyPath: keyPath)
         animation.fromValue = fromValue
         animation.toValue = toValue
@@ -99,7 +102,8 @@ class ChatControllerAnimations {
     private init() {}
     
     static func getAnimationCallback(chatControllerNode viewNode: ChatControllerNode,
-                                     shouldAnimateScrollView: Bool) -> ChatHistoryListViewTransition.AnimationCallback {
+                                     shouldAnimateScrollView: Bool,
+                                     presentationData: PresentationData) -> ChatHistoryListViewTransition.AnimationCallback {
         return { [weak viewNode = viewNode] (chatMessageNode: ListViewItemNode, completion: (() -> Void)?) in            
             guard let viewNode = viewNode,
                   let inputPanelNode = viewNode.inputPanelNode as? ChatTextInputPanelNode else {
@@ -108,11 +112,26 @@ class ChatControllerAnimations {
             }
             
             if let chatMessageNode = chatMessageNode as? ChatMessageBubbleItemNode {
-                ChatControllerAnimationsText.animateText(chatControllerNode: viewNode,
-                                                         inputPanelNode: inputPanelNode,
-                                                         chatMessageNode: chatMessageNode,
-                                                         shouldAnimateScrollView: shouldAnimateScrollView,
-                                                         completion: completion)
+                if let chatMessageTextContentNode = chatMessageNode.chatMessageTextBubbleContentNode {
+                    ChatControllerAnimationsText.animateText(chatControllerNode: viewNode,
+                                                             inputPanelNode: inputPanelNode,
+                                                             chatMessageNode: chatMessageNode,
+                                                             chatMessageTextContentNode: chatMessageTextContentNode,
+                                                             shouldAnimateScrollView: shouldAnimateScrollView,
+                                                             completion: completion)
+                }
+                else if let chatMessageFileContentNode = chatMessageNode.chatMessageFileBubbleContentNode {
+                    ChatControllerAnimationsVoice.animateVoice(chatControllerNode: viewNode,
+                                                               inputPanelNode: inputPanelNode,
+                                                               chatMessageNode: chatMessageNode,
+                                                               chatMessageFileContentNode: chatMessageFileContentNode,
+                                                               shouldAnimateScrollView: shouldAnimateScrollView,
+                                                               presentationData: presentationData,
+                                                               completion: completion)
+                }
+                else {
+                    completion?()
+                }
             }
             else if let chatMessageNode = chatMessageNode as? ChatMessageSticker {
                 ChatControllerAnimationsEmoji.animateEmoji(chatControllerNode: viewNode,
@@ -120,6 +139,9 @@ class ChatControllerAnimations {
                                                            chatMessageNode: chatMessageNode,
                                                            shouldAnimateScrollView: shouldAnimateScrollView,
                                                            completion: completion)
+            }
+            else {
+                completion?()
             }
         }
     }

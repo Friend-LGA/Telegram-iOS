@@ -409,13 +409,11 @@ public class ChatControllerAnimationsEmoji {
             }
             
             let animations = [
-                ChatControllerAnimations.setupRepositionXAnimation(layer: chatMessageContentNode.layer,
-                                                                   fromPosition: fromFrame.position.x,
+                ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x - toTranslateX,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.xPositionFunc),
-                ChatControllerAnimations.setupRepositionYAnimation(layer: chatMessageContentNode.layer,
-                                                                   fromPosition: fromFrame.position.y,
+                ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                    toPosition: toFrame.position.y - toTranslateY,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.yPositionFunc),
@@ -481,13 +479,11 @@ public class ChatControllerAnimationsEmoji {
             let toOpacity = config.chatMessageStatusNode.originalAlpha
             
             let animations = [
-                ChatControllerAnimations.setupRepositionXAnimation(layer: chatMessageStatusNode.layer,
-                                                                   fromPosition: fromFrame.position.x,
+                ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.emojiScaleFunc),
-                ChatControllerAnimations.setupRepositionYAnimation(layer: chatMessageStatusNode.layer,
-                                                                   fromPosition: fromFrame.position.y,
+                ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                    toPosition: toFrame.position.y,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.emojiScaleFunc),
@@ -519,13 +515,11 @@ public class ChatControllerAnimationsEmoji {
             let toFrame = config.replyInfoNode.convertedFrameEnd
             
             let animations = [
-                ChatControllerAnimations.setupRepositionXAnimation(layer: replyInfoNode.layer,
-                                                                   fromPosition: fromFrame.position.x,
+                ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.xPositionFunc),
-                ChatControllerAnimations.setupRepositionYAnimation(layer: replyInfoNode.layer,
-                                                                   fromPosition: fromFrame.position.y,
+                ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                    toPosition: toFrame.position.y,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.yPositionFunc)
@@ -539,13 +533,11 @@ public class ChatControllerAnimationsEmoji {
             let toFrame = config.replyBackgroundNode.convertedFrameEnd
             
             let animations = [
-                ChatControllerAnimations.setupRepositionXAnimation(layer: replyBackgroundNode.layer,
-                                                                   fromPosition: fromFrame.position.x,
+                ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.xPositionFunc),
-                ChatControllerAnimations.setupRepositionYAnimation(layer: replyBackgroundNode.layer,
-                                                                   fromPosition: fromFrame.position.y,
+                ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                    toPosition: toFrame.position.y,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.yPositionFunc)
@@ -591,8 +583,7 @@ public class ChatControllerAnimationsEmoji {
                 let toTranslateY = -(config.animatingNode.endFrame.height - (config.animatingNode.startFrame.height + config.accessoryPanelFrame.height))
                 
                 let animations = [
-                    ChatControllerAnimations.setupRepositionYAnimation(layer: listContainerNode.layer,
-                                                                       fromPosition: fromFrame.position.y,
+                    ChatControllerAnimations.setupRepositionYAnimation(fromPosition: fromFrame.position.y,
                                                                        toPosition: toFrame.position.y - toTranslateY,
                                                                        duration: animationDuration,
                                                                        timingFunction: settings.yPositionFunc),

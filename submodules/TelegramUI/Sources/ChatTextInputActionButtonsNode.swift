@@ -8,7 +8,7 @@ import ContextUI
 final class ChatTextInputActionButtonsNode: ASDisplayNode {
     private let strings: PresentationStrings
     
-    let micButton: ChatTextInputMediaRecordingButton
+    public let micButton: ChatTextInputMediaRecordingButton
     let sendButton: HighlightTrackingButtonNode
     var sendButtonRadialStatusNode: ChatSendButtonRadialStatusNode?
     var sendButtonHasApplyIcon = false

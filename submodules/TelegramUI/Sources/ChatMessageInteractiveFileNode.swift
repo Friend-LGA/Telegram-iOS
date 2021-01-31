@@ -38,9 +38,9 @@ final class ChatMessageInteractiveFileNode: ASDisplayNode {
     private let consumableContentNode: ASImageNode
     
     private var iconNode: TransformImageNode?
-    private var statusNode: SemanticStatusNode?
+    public private(set) var statusNode: SemanticStatusNode?
     private var playbackAudioLevelView: VoiceBlobView?
-    private var streamingStatusNode: SemanticStatusNode?
+    public private(set) var streamingStatusNode: SemanticStatusNode?
     private var tapRecognizer: UITapGestureRecognizer?
     
     private let statusDisposable = MetaDisposable()
@@ -91,7 +91,7 @@ final class ChatMessageInteractiveFileNode: ASDisplayNode {
     private var file: TelegramMediaFile?
     private var progressFrame: CGRect?
     private var streamingCacheStatusFrame: CGRect?
-    private var fileIconImage: UIImage?
+    public private(set) var fileIconImage: UIImage?
     
     override init() {
         self.titleNode = TextNode()
