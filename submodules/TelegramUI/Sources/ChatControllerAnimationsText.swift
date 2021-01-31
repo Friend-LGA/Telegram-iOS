@@ -22,7 +22,7 @@ private func toRadians(_ degrees: CGFloat) -> CGFloat {
 }
 
 private func generateTailImage(maxCornerRadius: CGFloat, tailColor: UIColor) -> UIImage {
-    let size = CGSize(width: 16.0, height: 16.0)
+    let size = CGSize(width: 12.0, height: 12.0)
     let inset: CGFloat = 1.0 // some random inset, probably to stroke
     let rightInset: CGFloat = tailWidth + inset
     // Should be extracted to some global constant or config
