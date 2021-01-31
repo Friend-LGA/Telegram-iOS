@@ -7404,6 +7404,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 |> take(1)
                 |> deliverOnMainQueue).start(next: { [weak self] peerView in
                     if let strongSelf = self {
+                        guard !ChatControllerAnimations.isAnimating else { return }
+                        
                         let animationSettingsController = strongSelf.context.sharedContext.makeChatAnimationSettingsController(context: strongSelf.context)
                         strongSelf.effectiveNavigationController?.pushViewController(animationSettingsController)
                     }
