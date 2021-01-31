@@ -335,6 +335,7 @@ final class ChatMediaInputStickerGridItemNode: GridItemNode {
         if self.imageNode.layer.animation(forKey: "opacity") != nil {
             return
         }
+        ChatControllerAnimations.setLastStickerImageNode(node: self.imageNode)
         if let interfaceInteraction = self.interfaceInteraction, let (_, item, _) = self.currentState, case .ended = recognizer.state {
             let _ = interfaceInteraction.sendSticker(.standalone(media: item.file), nil, false, self, self.bounds)
             self.imageNode.layer.animateAlpha(from: 0.5, to: 1.0, duration: 1.0)

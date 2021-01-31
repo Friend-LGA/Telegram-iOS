@@ -324,7 +324,7 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
     public var inputPanelNode: ChatInputPanelNode?
     private weak var currentDismissedInputPanelNode: ASDisplayNode?
     private var secondaryInputPanelNode: ChatInputPanelNode?
-    private var accessoryPanelNode: AccessoryPanelNode?
+    public private(set) var accessoryPanelNode: AccessoryPanelNode?
     private var inputContextPanelNode: ChatInputContextPanelNode?
     public let inputContextPanelContainer: ChatControllerTitlePanelNodeContainer
     private var overlayContextPanelNode: ChatInputContextPanelNode?
@@ -340,7 +340,6 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
     public private(set) var accessoryPanelLastFrame: CGRect?
     public private(set) var emojiLastFrame: CGRect?
     public private(set) var emojiLastCharacter: Character?
-    public private(set) var lastReplyLineNodeFrame: CGRect?
     
     let navigateButtons: ChatHistoryNavigationButtons
     
@@ -615,6 +614,7 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
                 if case .scheduledMessages = strongSelf.chatPresentationInterfaceState.subject, strongSelf.chatPresentationInterfaceState.editMessageState == nil {
                     strongSelf.controllerInteraction.scheduleCurrentMessage()
                 } else {
+                    ChatControllerAnimations.resetLastStickerImageNode()
                     strongSelf.textInputLastFrame = nil
                     if let textInputNode = strongSelf.textInputPanelNode?.textInputContainer {
                         strongSelf.textInputLastFrame = textInputNode.view.convert(textInputNode.view.bounds, to: strongSelf.view)
@@ -631,9 +631,9 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
                     if let accessoryPanelNode = strongSelf.accessoryPanelNode {
                         strongSelf.accessoryPanelLastFrame = accessoryPanelNode.frame
                     }
-                    strongSelf.lastReplyLineNodeFrame = nil
+                    ChatControllerAnimations.lastReplyLineNodeFrame = nil
                     if let accessoryPanelNode = strongSelf.accessoryPanelNode as? ReplyAccessoryPanelNode {
-                        strongSelf.lastReplyLineNodeFrame = accessoryPanelNode.lineNode.view.convert(accessoryPanelNode.lineNode.view.bounds, to: strongSelf.view)
+                        ChatControllerAnimations.lastReplyLineNodeFrame = accessoryPanelNode.lineNode.view.convert(accessoryPanelNode.lineNode.view.bounds, to: strongSelf.view)
                     }
                     strongSelf.emojiLastFrame = nil
                     strongSelf.emojiLastCharacter = nil

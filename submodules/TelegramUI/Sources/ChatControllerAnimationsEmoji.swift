@@ -67,35 +67,45 @@ private struct Config {
                                        insets: inputPanelNode.textInputNode?.textContainerInset ?? UIEdgeInsets.zero,
                                        minimalInputHeight: inputPanelNode.minimalInputHeight(),
                                        emojiFrame: viewNode.emojiLastFrame ?? CGRect.zero,
-                                       emojiCharacter: viewNode.emojiLastCharacter ?? Character(""))
+                                       emojiCharacter: viewNode.emojiLastCharacter ?? Character("-"))
         
         self.accessoryPanelFrame = viewNode.accessoryPanelLastFrame ?? CGRect.zero
         
-        let bigEmojiSize = chatMessageImageNode.bounds.size
-        var smallEmojiFrame = inputPanelNode.textInputNode?.view.convert(self.inputTextContainerNode.emojiFrame, to: viewNode.view) ?? CGRect.zero
-        var scaleFactor = smallEmojiFrame.width / bigEmojiSize.width
-        smallEmojiFrame.size.height = bigEmojiSize.height * scaleFactor
-        
-        scaleFactor = (self.inputTextContainerNode.minimalInputHeight - self.inputTextContainerNode.insets.top - self.inputTextContainerNode.insets.bottom) / smallEmojiFrame.height
-        smallEmojiFrame.size.width *= scaleFactor
-        smallEmojiFrame.size.height *= scaleFactor
-        let emojiWidth = smallEmojiFrame.width
-        let emojiHeight = smallEmojiFrame.height
-        
-        scaleFactor = 1.6
-        if let chatMessageNode = chatMessageNode as? ChatMessageAnimatedStickerItemNode,
-           let _ = chatMessageNode.animationNode as? AnimatedStickerNode {
-            scaleFactor = 1.1
+        // Should be checked first, because we dont nullify emoji variables
+        if let stickerImageNode = ChatControllerAnimations.lastStickerImageNode {
+            self.animatingNode = (startFrame: stickerImageNode.view.convert(stickerImageNode.view.bounds, to: viewNode.view),
+                                  endFrame: chatMessageImageNode.view.convert(chatMessageImageNode.view.bounds, to: viewNode.view))
         }
-        smallEmojiFrame.size.width *= scaleFactor
-        smallEmojiFrame.size.height *= scaleFactor
-        smallEmojiFrame.origin.x -= ((smallEmojiFrame.width - emojiWidth) / 4.0)
-        smallEmojiFrame.origin.y -= ((smallEmojiFrame.height - emojiHeight) / 4.0)
-        
-        smallEmojiFrame.origin.x -= 1.0 // some dark magick
-        
-        self.animatingNode = (startFrame: smallEmojiFrame,
-                              endFrame: chatMessageImageNode.view.convert(chatMessageImageNode.view.bounds, to: viewNode.view))
+        else if let emojiFrame = viewNode.emojiLastFrame {
+            let bigEmojiSize = chatMessageImageNode.bounds.size
+            var smallEmojiFrame = inputPanelNode.textInputNode?.view.convert(emojiFrame, to: viewNode.view) ?? CGRect.zero
+            var scaleFactor = smallEmojiFrame.width / bigEmojiSize.width
+            smallEmojiFrame.size.height = bigEmojiSize.height * scaleFactor
+            
+            scaleFactor = (self.inputTextContainerNode.minimalInputHeight - self.inputTextContainerNode.insets.top - self.inputTextContainerNode.insets.bottom) / smallEmojiFrame.height
+            smallEmojiFrame.size.width *= scaleFactor
+            smallEmojiFrame.size.height *= scaleFactor
+            let emojiWidth = smallEmojiFrame.width
+            let emojiHeight = smallEmojiFrame.height
+            
+            scaleFactor = 1.6
+            if let chatMessageNode = chatMessageNode as? ChatMessageAnimatedStickerItemNode,
+               let _ = chatMessageNode.animationNode as? AnimatedStickerNode {
+                scaleFactor = 1.1
+            }
+            smallEmojiFrame.size.width *= scaleFactor
+            smallEmojiFrame.size.height *= scaleFactor
+            smallEmojiFrame.origin.x -= ((smallEmojiFrame.width - emojiWidth) / 4.0)
+            smallEmojiFrame.origin.y -= ((smallEmojiFrame.height - emojiHeight) / 4.0)
+            
+            smallEmojiFrame.origin.x -= 1.0 // some dark magick
+            
+            self.animatingNode = (startFrame: smallEmojiFrame,
+                                  endFrame: chatMessageImageNode.view.convert(chatMessageImageNode.view.bounds, to: viewNode.view))
+        }
+        else {
+            self.animatingNode = (startFrame: CGRect.zero, endFrame: CGRect.zero)
+        }
         
         let contentConvertedFrame = chatMessageContentNode.view.convert(chatMessageContentNode.view.bounds, to: viewNode.view)
         let imageConvertedFrame = chatMessageImageNode.view.convert(chatMessageImageNode.view.bounds, to: viewNode.view)
@@ -120,7 +130,7 @@ private struct Config {
                                       originalSubnodeIndex: chatMessageStatusNode.supernode!.subnodes!.firstIndex(of: chatMessageStatusNode)!)
         
         if let replyInfoNode = replyInfoNode, let replyBackgroundNode = replyBackgroundNode {
-            let lineNodeFrame = viewNode.lastReplyLineNodeFrame ?? CGRect.zero
+            let lineNodeFrame = ChatControllerAnimations.lastReplyLineNodeFrame ?? CGRect.zero
             
             self.replyInfoNode = (originalFrame: replyInfoNode.frame,
                                   convertedFrameStart: CGRect(origin: lineNodeFrame.origin, size: replyInfoNode.frame.size),
@@ -162,6 +172,7 @@ public class ChatControllerAnimationsEmoji {
         let chatMessageStatusNode = chatMessageNode.dateAndStatusNode
         let replyInfoNode = chatMessageNode.replyInfoNode
         let replyBackgroundNode = chatMessageNode.replyBackgroundNode
+        let stickerImageNode = ChatControllerAnimations.lastStickerImageNode
                 
         if let chatMessageAnimatedNode = chatMessageNode as? ChatMessageAnimatedStickerItemNode {
             guard let _ = chatMessageAnimatedNode.animationNode as? AnimatedStickerNode else {
@@ -279,7 +290,8 @@ public class ChatControllerAnimationsEmoji {
                                             weak replyInfoNode,
                                             weak replyInfoNodeSupernode,
                                             weak replyBackgroundNode,
-                                            weak replyBackgroundNodeSupernode] in
+                                            weak replyBackgroundNodeSupernode,
+                                            weak stickerImageNode] in
             listNode?.layer.removeAllAnimations()
             listContainerNode?.layer.removeAllAnimations()
             
@@ -315,6 +327,11 @@ public class ChatControllerAnimationsEmoji {
                 replyInfoNodeSupernode.insertSubnode(replyInfoNode, at: config.replyInfoNode.originalSubnodeIndex)
                 replyInfoNode.frame = config.replyInfoNode.originalFrame
                 replyInfoNode.layer.removeAnimation(forKey: ChatControllerAnimations.animationKey)
+            }
+            
+            if let stickerImageNode = stickerImageNode {
+                stickerImageNode.supernode?.alpha = 1.0
+                stickerImageNode.supernode?.layer.removeAnimation(forKey: ChatControllerAnimations.animationKey)
             }
                         
             inputPlaceholderTransitionNode?.removeFromSupernode()
@@ -373,10 +390,16 @@ public class ChatControllerAnimationsEmoji {
             let toFrame = config.chatMessageContentNode.convertedFrameEnd
             
             let fromTranslateX = -(config.chatMessageImageNode.originalFrame.width - config.chatMessageImageNode.convertedFrame.width) / 2.0
-            let toTranslateX = config.chatMessageImageNode.originalFrame.width / 2.0
+            var toTranslateX = config.chatMessageImageNode.originalFrame.width / 2.0
             
             let fromTranslateY = -(config.chatMessageImageNode.originalFrame.height - config.chatMessageImageNode.convertedFrame.height) / 2.0
             let toTranslateY = -config.chatMessageImageNode.originalFrame.height / 2.0
+            
+            if stickerImageNode != nil {
+                let halfScreenSize = viewNode.frame.width / 2.0
+                let scaleFactor = (halfScreenSize - fromFrame.center.x) / halfScreenSize // range -1...1
+                toTranslateX *= scaleFactor
+            }
 
             let animations = [
                 ChatControllerAnimations.setupRepositionXAnimation(layer: chatMessageContentNode.layer,
@@ -521,6 +544,20 @@ public class ChatControllerAnimationsEmoji {
                                                                    timingFunction: settings.yPositionFunc)
             ]
             ChatControllerAnimations.addAnimations(replyBackgroundNode.layer, animations, duration: animationDuration)
+        }
+        
+        // stickerImageNode
+        if let stickerImageNode = stickerImageNode {
+            let fromOpacity: CGFloat = 1.0
+            let toOpacity = 0.0
+
+            let animations = [
+                ChatControllerAnimations.setupAnimation(keyPath: "opacity",
+                                                        fromValue: fromOpacity,
+                                                        toValue: toOpacity,
+                                                        duration: 0.5)
+            ]
+            ChatControllerAnimations.addAnimations(stickerImageNode.supernode!.layer, animations, duration: animationDuration)
         }
         
         // And finally, scroll view!

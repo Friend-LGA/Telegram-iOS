@@ -7,6 +7,16 @@ class ChatControllerAnimations {
     static public var isAnimating = false
     static public var animationsCounter = 0
     static public let animationKey = "ChatMessageAnimations"
+    static public private(set) weak var lastStickerImageNode: TransformImageNode? = nil
+    static public var lastReplyLineNodeFrame: CGRect? = nil
+    
+    static public func setLastStickerImageNode(node: TransformImageNode) {
+        lastStickerImageNode = node
+    }
+    
+    static public func resetLastStickerImageNode() {
+        lastStickerImageNode = nil
+    }
     
     static func updateAnimation(_ animation: CAAnimation, duration: Double, timingFunction: ChatAnimationTimingFunction? = nil, isRemovedOnCompletion: Bool = false) {
         animation.duration = duration
@@ -104,14 +114,7 @@ class ChatControllerAnimations {
                                                          shouldAnimateScrollView: shouldAnimateScrollView,
                                                          completion: completion)
             }
-            else if let chatMessageNode = chatMessageNode as? ChatMessageStickerItemNode {
-                ChatControllerAnimationsEmoji.animateEmoji(chatControllerNode: viewNode,
-                                                           inputPanelNode: inputPanelNode,
-                                                           chatMessageNode: chatMessageNode,
-                                                           shouldAnimateScrollView: shouldAnimateScrollView,
-                                                           completion: completion)
-            }
-            else if let chatMessageNode = chatMessageNode as? ChatMessageAnimatedStickerItemNode {
+            else if let chatMessageNode = chatMessageNode as? ChatMessageSticker {
                 ChatControllerAnimationsEmoji.animateEmoji(chatControllerNode: viewNode,
                                                            inputPanelNode: inputPanelNode,
                                                            chatMessageNode: chatMessageNode,

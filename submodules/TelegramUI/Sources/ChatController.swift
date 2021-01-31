@@ -921,6 +921,12 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 strongSelf.interfaceInteraction?.displaySlowmodeTooltip(sourceNode, sourceRect)
                 return false
             }
+            
+            ChatControllerAnimations.lastReplyLineNodeFrame = nil
+            let viewNode = strongSelf.chatDisplayNode
+            if let accessoryPanelNode = viewNode.accessoryPanelNode as? ReplyAccessoryPanelNode {
+                ChatControllerAnimations.lastReplyLineNodeFrame = accessoryPanelNode.lineNode.view.convert(accessoryPanelNode.lineNode.view.bounds, to: viewNode.view)
+            }
                 
             strongSelf.chatDisplayNode.setupSendActionOnViewUpdate({
                 if let strongSelf = self {
