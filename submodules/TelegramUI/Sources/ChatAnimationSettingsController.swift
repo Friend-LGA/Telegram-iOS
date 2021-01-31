@@ -34,13 +34,13 @@ private final class ChatAnimationSettingsControllerArguments {
 
 private enum ChatAnimationSettingsControllerSection: Int32 {
     case common
-    case yPositgion
-    case xPosition
-    case bubbleShape
-    case textPosition
-    case colorChange
-    case emojiScale
-    case timeAppears
+    case section1
+    case section2
+    case section3
+    case section4
+    case section5
+    case section6
+    case section7
 }
 
 private enum ChatAnimationSettingsControllerEntryId: Int32 {
@@ -49,20 +49,20 @@ private enum ChatAnimationSettingsControllerEntryId: Int32 {
     case share
     case importParams
     case restore
-    case yPositionHeader
-    case yPosition
-    case xPositionHeader
-    case xPosition
-    case bubbleShapeHeader
-    case bubbleShape
-    case textPositionHeader
-    case textPosition
-    case colorChangeHeader
-    case colorChange
-    case emojiScaleHeader
-    case emojiScale
-    case timeAppearsHeader
-    case timeAppears
+    case header1
+    case curve1
+    case header2
+    case curve2
+    case header3
+    case curve3
+    case header4
+    case curve4
+    case header5
+    case curve5
+    case header6
+    case curve6
+    case header7
+    case curve7
 }
 
 private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
@@ -71,39 +71,39 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
     case share
     case importParams
     case restore
-    case yPositionHeader
-    case yPosition(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
-    case xPositionHeader
-    case xPosition(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
-    case bubbleShapeHeader
-    case bubbleShape(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
-    case textPositionHeader
-    case textPosition(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
-    case colorChangeHeader
-    case colorChange(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
-    case emojiScaleHeader
-    case emojiScale(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
-    case timeAppearsHeader
-    case timeAppears(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
+    case header1(String, Int)
+    case curve1(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
+    case header2(String, Int)
+    case curve2(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
+    case header3(String, Int)
+    case curve3(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
+    case header4(String, Int)
+    case curve4(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
+    case header5(String, Int)
+    case curve5(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
+    case header6(String, Int)
+    case curve6(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
+    case header7(String, Int)
+    case curve7(ChatAnimationDuration, ChatAnimationTimingFunction, Int)
     
     var section: ItemListSectionId {
         switch self {
         case .type, .duration, .share, .importParams, .restore:
             return ChatAnimationSettingsControllerSection.common.rawValue
-        case .yPositionHeader, .yPosition:
-            return ChatAnimationSettingsControllerSection.yPositgion.rawValue
-        case .xPositionHeader, .xPosition:
-            return ChatAnimationSettingsControllerSection.xPosition.rawValue
-        case .bubbleShapeHeader, .bubbleShape:
-            return ChatAnimationSettingsControllerSection.bubbleShape.rawValue
-        case .textPositionHeader, .textPosition:
-            return ChatAnimationSettingsControllerSection.textPosition.rawValue
-        case .colorChangeHeader, .colorChange:
-            return ChatAnimationSettingsControllerSection.colorChange.rawValue
-        case .emojiScaleHeader, .emojiScale:
-            return ChatAnimationSettingsControllerSection.emojiScale.rawValue
-        case .timeAppearsHeader, .timeAppears:
-            return ChatAnimationSettingsControllerSection.timeAppears.rawValue
+        case .header1, .curve1:
+            return ChatAnimationSettingsControllerSection.section1.rawValue
+        case .header2, .curve2:
+            return ChatAnimationSettingsControllerSection.section2.rawValue
+        case .header3, .curve3:
+            return ChatAnimationSettingsControllerSection.section3.rawValue
+        case .header4, .curve4:
+            return ChatAnimationSettingsControllerSection.section4.rawValue
+        case .header5, .curve5:
+            return ChatAnimationSettingsControllerSection.section5.rawValue
+        case .header6, .curve6:
+            return ChatAnimationSettingsControllerSection.section6.rawValue
+        case .header7, .curve7:
+            return ChatAnimationSettingsControllerSection.section7.rawValue
         }
     }
     
@@ -119,34 +119,34 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
             return .importParams
         case .restore:
             return .restore
-        case .yPositionHeader:
-            return .yPositionHeader
-        case .yPosition:
-            return .yPosition
-        case .xPositionHeader:
-            return .xPositionHeader
-        case .xPosition:
-            return .xPosition
-        case .bubbleShapeHeader:
-            return .bubbleShapeHeader
-        case .bubbleShape:
-            return .bubbleShape
-        case .textPositionHeader:
-            return .textPositionHeader
-        case .textPosition:
-            return .textPosition
-        case .colorChangeHeader:
-            return .colorChangeHeader
-        case .colorChange:
-            return .colorChange
-        case .emojiScaleHeader:
-            return .emojiScaleHeader
-        case .emojiScale:
-            return .emojiScale
-        case .timeAppearsHeader:
-            return .timeAppearsHeader
-        case .timeAppears:
-            return .timeAppears
+        case .header1:
+            return .header1
+        case .curve1:
+            return .curve1
+        case .header2:
+            return .header2
+        case .curve2:
+            return .curve2
+        case .header3:
+            return .header3
+        case .curve3:
+            return .curve3
+        case .header4:
+            return .header4
+        case .curve4:
+            return .curve4
+        case .header5:
+            return .header5
+        case .curve5:
+            return .curve5
+        case .header6:
+            return .header6
+        case .curve6:
+            return .curve6
+        case .header7:
+            return .header7
+        case .curve7:
+            return .curve7
         }
     }
     
@@ -162,33 +162,33 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
             return 0
         case .restore:
             return 0
-        case .yPositionHeader:
-            return 0
-        case let .yPosition(_, _, value):
+        case let .header1(_, value):
             return value
-        case .xPositionHeader:
-            return 0
-        case let .xPosition(_, _, value):
+        case let .curve1(_, _, value):
             return value
-        case .bubbleShapeHeader:
-            return 0
-        case let .bubbleShape(_, _, value):
+        case let .header2(_, value):
             return value
-        case .textPositionHeader:
-            return 0
-        case let .textPosition(_, _, value):
+        case let .curve2(_, _, value):
             return value
-        case .colorChangeHeader:
-            return 0
-        case let .colorChange(_, _, value):
+        case let .header3(_, value):
             return value
-        case .emojiScaleHeader:
-            return 0
-        case let .emojiScale(_, _, value):
+        case let .curve3(_, _, value):
             return value
-        case .timeAppearsHeader:
-            return 0
-        case let .timeAppears(_, _, value):
+        case let .header4(_, value):
+            return value
+        case let .curve4(_, _, value):
+            return value
+        case let .header5(_, value):
+            return value
+        case let .curve5(_, _, value):
+            return value
+        case let .header6(_, value):
+            return value
+        case let .curve6(_, _, value):
+            return value
+        case let .header7(_, value):
+            return value
+        case let .curve7(_, _, value):
             return value
         }
     }
@@ -222,27 +222,21 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
             return ItemListActionItem(presentationData: presentationData, title: "Restore to Default", kind: .destructive, alignment: .natural, sectionId: self.section, style: .blocks, action: {
                 arguments.restore()
             })
-        case .yPositionHeader:
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: "Y POSITION", sectionId: self.section)
-        case .xPositionHeader:
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: "X POSITION", sectionId: self.section)
-        case .bubbleShapeHeader:
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: "BUBBLE SHAPE", sectionId: self.section)
-        case .textPositionHeader:
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: "TEXT POSITION", sectionId: self.section)
-        case .colorChangeHeader:
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: "COLOR CHANGE", sectionId: self.section)
-        case .emojiScaleHeader:
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: "EMOJI SCALE", sectionId: self.section)
-        case .timeAppearsHeader:
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: "TIME APPEARS", sectionId: self.section)
-        case let .yPosition(duration, timingFunction, _),
-             let .xPosition(duration, timingFunction, _),
-             let .bubbleShape(duration, timingFunction, _),
-             let .textPosition(duration, timingFunction, _),
-             let .colorChange(duration, timingFunction, _),
-             let .emojiScale(duration, timingFunction, _),
-             let .timeAppears(duration, timingFunction, _):
+        case let .header1(title, _),
+             let .header2(title, _),
+             let .header3(title, _),
+             let .header4(title, _),
+             let .header5(title, _),
+             let .header6(title, _),
+             let .header7(title, _):
+            return ItemListSectionHeaderItem(presentationData: presentationData, text: title, sectionId: self.section)
+        case let .curve1(duration, timingFunction, _),
+             let .curve2(duration, timingFunction, _),
+             let .curve3(duration, timingFunction, _),
+             let .curve4(duration, timingFunction, _),
+             let .curve5(duration, timingFunction, _),
+             let .curve6(duration, timingFunction, _),
+             let .curve7(duration, timingFunction, _):
             return ChatAnimationSettingsCurveItem(presentationData: presentationData, sectionId: self.section, duration: duration, timingFunction: timingFunction)
         }
     }
@@ -268,29 +262,29 @@ private func createChatAnimationSettingsControllerEntries(_ state: ChatAnimation
     
     if let settings = settings as? ChatAnimationSettingsCommon {
         entries += [
-            .yPositionHeader,
-            .yPosition(settings.duration, settings.yPositionFunc, state.dirtyCounter),
-            .xPositionHeader,
-            .xPosition(settings.duration, settings.xPositionFunc, state.dirtyCounter),
-            .bubbleShapeHeader,
-            .bubbleShape(settings.duration, settings.bubbleShapeFunc, state.dirtyCounter),
-            .textPositionHeader,
-            .textPosition(settings.duration, settings.textPositionFunc, state.dirtyCounter),
-            .colorChangeHeader,
-            .colorChange(settings.duration, settings.colorChangeFunc, state.dirtyCounter),
-            .timeAppearsHeader,
-            .timeAppears(settings.duration, settings.timeAppearsFunc, state.dirtyCounter)
+            .header1("Y POSITION", state.dirtyCounter),
+            .curve1(settings.duration, settings.yPositionFunc, state.dirtyCounter),
+            .header2("X POSITION", state.dirtyCounter),
+            .curve2(settings.duration, settings.xPositionFunc, state.dirtyCounter),
+            .header3("BUBBLE SHAPE", state.dirtyCounter),
+            .curve3(settings.duration, settings.bubbleShapeFunc, state.dirtyCounter),
+            .header4("TEXT POSITION", state.dirtyCounter),
+            .curve4(settings.duration, settings.textPositionFunc, state.dirtyCounter),
+            .header5("COLOR CHANGE", state.dirtyCounter),
+            .curve5(settings.duration, settings.colorChangeFunc, state.dirtyCounter),
+            .header6("TIME APPEARS", state.dirtyCounter),
+            .curve6(settings.duration, settings.timeAppearsFunc, state.dirtyCounter)
         ]
     } else if let settings = settings as? ChatAnimationSettingsEmoji {
         entries += [
-            .yPositionHeader,
-            .yPosition(settings.duration, settings.yPositionFunc, state.dirtyCounter),
-            .xPositionHeader,
-            .xPosition(settings.duration, settings.xPositionFunc, state.dirtyCounter),
-            .emojiScaleHeader,
-            .emojiScale(settings.duration, settings.emojiScaleFunc, state.dirtyCounter),
-            .timeAppearsHeader,
-            .timeAppears(settings.duration, settings.timeAppearsFunc, state.dirtyCounter)
+            .header1("Y POSITION", state.dirtyCounter),
+            .curve1(settings.duration, settings.yPositionFunc, state.dirtyCounter),
+            .header2("X POSITION", state.dirtyCounter),
+            .curve2(settings.duration, settings.xPositionFunc, state.dirtyCounter),
+            .header3("EMOJI SCALE", state.dirtyCounter),
+            .curve3(settings.duration, settings.emojiScaleFunc, state.dirtyCounter),
+            .header4("TIME APPEARS", state.dirtyCounter),
+            .curve4(settings.duration, settings.timeAppearsFunc, state.dirtyCounter)
         ]
     }
     return entries
