@@ -49,7 +49,7 @@ private struct Config {
         self.animatingNode = (startFrame: convertedFrame.offsetBy(dx: CGFloat.zero, dy: chatMessageNode.bounds.height),
                               endFrame: convertedFrame)
         
-        let endFrame = backgroundNode.view.convert(backgroundNode.view.bounds, to: audioBlob.superview!)
+        let endFrame = backgroundNode.view.convert(backgroundNode.view.bounds, to: viewNode.view)
         let inset: CGFloat = 20.0
         self.audioBlob = (originalFrame: audioBlob.frame,
                           convertedStartFrame: audioBlob.frame,
@@ -88,6 +88,8 @@ public class ChatControllerAnimationsVoice {
         
         let settingsManager = ChatAnimationSettingsManager()
         let settings = settingsManager.getSettings(for: ChatAnimationType.voice) as! ChatAnimationSettingsVoice
+        
+        viewNode.view.addSubview(audioBlob)
         
         chatMessageNode.isUserInteractionEnabled = false
         listContainerNode.isUserInteractionEnabled = false

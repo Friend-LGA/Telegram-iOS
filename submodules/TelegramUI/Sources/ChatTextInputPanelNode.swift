@@ -444,7 +444,6 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
                             let snapshotView = micDecoration.snapshotView(afterScreenUpdates: false)!
                             snapshotView.layer.zPosition = CGFloat(MAXFLOAT)
                             ChatControllerAnimations.voiceBlobView = snapshotView
-                            UIApplication.shared.windows.last?.addSubview(snapshotView)
                             snapshotView.frame = micDecoration.frame
                         }
                         

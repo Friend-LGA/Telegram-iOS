@@ -120,11 +120,11 @@ final public class ChatAnimationSettingsCommon: ChatAnimationSettings, Codable {
                                                                                   controlPoint1: CGPoint(x: 0.33, y: 0.0),
                                                                                   controlPoint2: CGPoint(x: 0.0, y: 1.0)),
          bubbleShapeFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
-                                                                                    endTimeOffset: 0.67,
+                                                                                    endTimeOffset: 0.0,
                                                                                     controlPoint1: CGPoint(x: 0.33, y: 0.0),
                                                                                     controlPoint2: CGPoint(x: 0.0, y: 1.0)),
          textPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
-                                                                                     endTimeOffset: 0.67,
+                                                                                     endTimeOffset: 0.0,
                                                                                      controlPoint1: CGPoint(x: 0.33, y: 0.0),
                                                                                      controlPoint2: CGPoint(x: 0.0, y: 1.0)),
          colorChangeFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
@@ -143,6 +143,13 @@ final public class ChatAnimationSettingsCommon: ChatAnimationSettings, Codable {
         self.textPositionFunc = textPositionFunc
         self.colorChangeFunc = colorChangeFunc
         self.timeAppearsFunc = timeAppearsFunc
+        
+        if case .small = type {
+            self.bubbleShapeFunc = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                               endTimeOffset: 0.5,
+                                                               controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                               controlPoint2: CGPoint(x: 0.0, y: 1.0))
+        }
     }
     
     public func restoreDefaults() {
@@ -261,14 +268,14 @@ final public class ChatAnimationSettingsVoice: ChatAnimationSettings, Codable {
                                                                                   controlPoint1: CGPoint(x: 0.33, y: 0.0),
                                                                                   controlPoint2: CGPoint(x: 0.0, y: 1.0)),
          xPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
-                                                                                  endTimeOffset: 0.5,
+                                                                                  endTimeOffset: 0.0,
                                                                                   controlPoint1: CGPoint(x: 0.33, y: 0.0),
                                                                                   controlPoint2: CGPoint(x: 0.0, y: 1.0)),
-         scaleFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.17,
-                                                                                   endTimeOffset: 0.5,
+         scaleFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                   endTimeOffset: 0.0,
                                                                                    controlPoint1: CGPoint(x: 0.33, y: 0.0),
                                                                                    controlPoint2: CGPoint(x: 0.0, y: 1.0)),
-         fadeFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.17,
+         fadeFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
                                                                                     endTimeOffset: 0.5,
                                                                                     controlPoint1: CGPoint(x: 0.33, y: 0.0),
                                                                                     controlPoint2: CGPoint(x: 0.67, y: 1.0))) {
@@ -326,10 +333,10 @@ final public class ChatAnimationSettingsVideo: ChatAnimationSettings, Codable {
                                                                                   controlPoint1: CGPoint(x: 0.33, y: 0.0),
                                                                                   controlPoint2: CGPoint(x: 0.0, y: 1.0)),
          xPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
-                                                                                  endTimeOffset: 0.5,
+                                                                                  endTimeOffset: 0.0,
                                                                                   controlPoint1: CGPoint(x: 0.33, y: 0.0),
                                                                                   controlPoint2: CGPoint(x: 0.0, y: 1.0)),
-         scaleFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.17,
+         scaleFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
                                                                                    endTimeOffset: 0.5,
                                                                                    controlPoint1: CGPoint(x: 0.33, y: 0.0),
                                                                                    controlPoint2: CGPoint(x: 0.0, y: 1.0))) {
