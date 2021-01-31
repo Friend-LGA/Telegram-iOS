@@ -268,10 +268,10 @@ public class ChatControllerAnimationsText {
     private init() {}
     
     static func animateText(chatControllerNode viewNode: ChatControllerNode,
-                                   inputPanelNode: ChatTextInputPanelNode,
-                                   chatMessageNode: ChatMessageBubbleItemNode,
-                                   shouldAnimateScrollView: Bool,
-                                   completion: (() -> Void)?) {
+                            inputPanelNode: ChatTextInputPanelNode,
+                            chatMessageNode: ChatMessageBubbleItemNode,
+                            shouldAnimateScrollView: Bool,
+                            completion: (() -> Void)?) {
         guard let chatMessageTextContentNode = chatMessageNode.chatMessageTextBubbleContentNode else {
             completion?()
             return
@@ -320,20 +320,20 @@ public class ChatControllerAnimationsText {
                             chatMessageTextNode: chatMessageTextNode,
                             chatMessageStatusNode: chatMessageStatusNode)
         
-        let settingsManager = ChatAnimationSettingsManager()
-        var settings: ChatAnimationSettingsCommon
         // Figuring out which settings we should use for the animation
-        do {
+        func getSettings() -> ChatAnimationSettingsCommon {
+            let settingsManager = ChatAnimationSettingsManager()
             if chatMessageWebpageContentNode != nil {
-                settings = settingsManager.getSettings(for: ChatAnimationType.link) as! ChatAnimationSettingsCommon
+                return settingsManager.getSettings(for: ChatAnimationType.link) as! ChatAnimationSettingsCommon
             } else {
                 if config.inputTextContainerNode.contentSize.height > config.inputTextContainerNode.convertedFrame.height {
-                    settings = settingsManager.getSettings(for: ChatAnimationType.big) as! ChatAnimationSettingsCommon
+                    return settingsManager.getSettings(for: ChatAnimationType.big) as! ChatAnimationSettingsCommon
                 } else {
-                    settings = settingsManager.getSettings(for: ChatAnimationType.small) as! ChatAnimationSettingsCommon
+                    return settingsManager.getSettings(for: ChatAnimationType.small) as! ChatAnimationSettingsCommon
                 }
             }
         }
+        let settings = getSettings()
         
         chatMessageNode.isUserInteractionEnabled = false
         listContainerNode.isUserInteractionEnabled = false

@@ -125,7 +125,7 @@ private struct Config {
         self.chatMessageStatusNode = (originalFrame: chatMessageStatusNode.frame,
                                       convertedFrame: CGRect(origin: CGPoint(x: self.chatMessageImageNode.convertedFrame.maxX - chatMessageStatusNode.bounds.width / 2.0,
                                                                              y: self.chatMessageImageNode.convertedFrame.maxY - chatMessageStatusNode.bounds.height / 2.0),
-                                                                  size: chatMessageStatusNode.bounds.size),
+                                                             size: chatMessageStatusNode.bounds.size),
                                       originalAlpha: chatMessageStatusNode.alpha,
                                       originalSubnodeIndex: chatMessageStatusNode.supernode!.subnodes!.firstIndex(of: chatMessageStatusNode)!)
         
@@ -150,7 +150,7 @@ private struct Config {
             self.replyBackgroundNode = (originalFrame: CGRect.zero,
                                         convertedFrameStart: CGRect.zero,
                                         convertedFrameEnd: CGRect.zero,
-                                  originalSubnodeIndex: 0)
+                                        originalSubnodeIndex: 0)
         }
     }
 }
@@ -173,7 +173,7 @@ public class ChatControllerAnimationsEmoji {
         let replyInfoNode = chatMessageNode.replyInfoNode
         let replyBackgroundNode = chatMessageNode.replyBackgroundNode
         let stickerImageNode = ChatControllerAnimations.lastStickerImageNode
-                
+        
         if let chatMessageAnimatedNode = chatMessageNode as? ChatMessageAnimatedStickerItemNode {
             guard let _ = chatMessageAnimatedNode.animationNode as? AnimatedStickerNode else {
                 // if it is not normal animated sticker, then return
@@ -207,8 +207,15 @@ public class ChatControllerAnimationsEmoji {
                             replyInfoNode: replyInfoNode,
                             replyBackgroundNode: replyBackgroundNode)
         
-        let settingsManager = ChatAnimationSettingsManager()
-        let settings = settingsManager.getSettings(for: ChatAnimationType.emoji) as! ChatAnimationSettingsEmoji
+        func getSettings() -> ChatAnimationSettingsEmoji {
+            let settingsManager = ChatAnimationSettingsManager()
+            if stickerImageNode == nil {
+                return settingsManager.getSettings(for: ChatAnimationType.emoji) as! ChatAnimationSettingsEmoji
+            } else {
+                return settingsManager.getSettings(for: ChatAnimationType.sticker) as! ChatAnimationSettingsEmoji
+            }
+        }
+        let settings = getSettings()
         
         chatMessageNode.isUserInteractionEnabled = false
         listContainerNode.isUserInteractionEnabled = false
@@ -230,7 +237,7 @@ public class ChatControllerAnimationsEmoji {
         chatMessageImageNode.shouldAnimateSizeChanges = false
         chatMessageStatusNode.displaysAsynchronously = false
         chatMessageStatusNode.shouldAnimateSizeChanges = false
-                
+        
         let inputPlaceholderTransitionNode = ASDisplayNode()
         inputPlaceholderTransitionNode.displaysAsynchronously = false
         inputPlaceholderTransitionNode.shouldAnimateSizeChanges = false
@@ -262,7 +269,7 @@ public class ChatControllerAnimationsEmoji {
             inputPlaceholderTransitionNode.frame = textNode.view.convert(textNode.view.bounds, to: viewNode.view)
             viewNode.insertSubnode(inputPlaceholderTransitionNode, aboveSubnode: viewNode.inputContextPanelContainer)
         }
-
+        
         // Preparation is done, it's time to go bananaz!!! (... and draw some animations)
         let animationDuration = settings.duration.rawValue
         
@@ -275,7 +282,7 @@ public class ChatControllerAnimationsEmoji {
             animationNode.alpha = 0.0
             chatMessagePlaceholderNode?.alpha = 0.0
         }
-                
+        
         CATransaction.begin()
         CATransaction.setCompletionBlock { [weak listContainerNode,
                                             weak inputPanelNode,
@@ -333,13 +340,13 @@ public class ChatControllerAnimationsEmoji {
                 stickerImageNode.supernode?.alpha = 1.0
                 stickerImageNode.supernode?.layer.removeAnimation(forKey: ChatControllerAnimations.animationKey)
             }
-                        
+            
             inputPlaceholderTransitionNode?.removeFromSupernode()
             
             if shouldAnimateScrollView {
                 listContainerNode?.frame = listContainerNodeOriginalFrame
                 listNode?.frame = listNodeOriginalFrame
-
+                
                 listContainerNode?.layer.removeAnimation(forKey: ChatControllerAnimations.animationKey)
                 listNode?.layer.removeAnimation(forKey: ChatControllerAnimations.animationKey)
             }
@@ -390,17 +397,17 @@ public class ChatControllerAnimationsEmoji {
             let toFrame = config.chatMessageContentNode.convertedFrameEnd
             
             let fromTranslateX = -(config.chatMessageImageNode.originalFrame.width - config.chatMessageImageNode.convertedFrame.width) / 2.0
-            var toTranslateX = config.chatMessageImageNode.originalFrame.width / 2.0
+            var toTranslateX: CGFloat = 0.0
             
             let fromTranslateY = -(config.chatMessageImageNode.originalFrame.height - config.chatMessageImageNode.convertedFrame.height) / 2.0
-            let toTranslateY = -config.chatMessageImageNode.originalFrame.height / 2.0
+            let toTranslateY = -(config.chatMessageImageNode.originalFrame.height - config.chatMessageImageNode.convertedFrame.height)
             
             if stickerImageNode != nil {
                 let halfScreenSize = viewNode.frame.width / 2.0
                 let scaleFactor = (halfScreenSize - fromFrame.center.x) / halfScreenSize // range -1...1
                 toTranslateX *= scaleFactor
             }
-
+            
             let animations = [
                 ChatControllerAnimations.setupRepositionXAnimation(layer: chatMessageContentNode.layer,
                                                                    fromPosition: fromFrame.position.x,
@@ -412,16 +419,16 @@ public class ChatControllerAnimationsEmoji {
                                                                    toPosition: toFrame.position.y - toTranslateY,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.yPositionFunc),
-                                ChatControllerAnimations.setupAnimation(keyPath: "transform.translation.x",
-                                                                        fromValue: fromTranslateX,
-                                                                        toValue: toTranslateX,
-                                                                        duration: animationDuration,
-                                                                        timingFunction: settings.emojiScaleFunc),
-                                ChatControllerAnimations.setupAnimation(keyPath: "transform.translation.y",
-                                                                        fromValue: fromTranslateY,
-                                                                        toValue: toTranslateY,
-                                                                        duration: animationDuration,
-                                                                        timingFunction: settings.emojiScaleFunc)
+                ChatControllerAnimations.setupAnimation(keyPath: "transform.translation.x",
+                                                        fromValue: fromTranslateX,
+                                                        toValue: toTranslateX,
+                                                        duration: animationDuration,
+                                                        timingFunction: settings.emojiScaleFunc),
+                ChatControllerAnimations.setupAnimation(keyPath: "transform.translation.y",
+                                                        fromValue: fromTranslateY,
+                                                        toValue: toTranslateY,
+                                                        duration: animationDuration,
+                                                        timingFunction: settings.emojiScaleFunc)
             ]
             ChatControllerAnimations.addAnimations(chatMessageContentNode.layer, animations, duration: animationDuration)
         }
@@ -434,7 +441,7 @@ public class ChatControllerAnimationsEmoji {
             
             let fromScale = scaleFactor
             let toScale: CGFloat = 1.0
-
+            
             let animations = [
                 ChatControllerAnimations.setupAnimation(keyPath: "transform.scale",
                                                         fromValue: fromScale,
@@ -450,7 +457,7 @@ public class ChatControllerAnimationsEmoji {
             ChatControllerAnimations.addAnimations(chatMessageImageNode.layer, animations, duration: animationDuration)
         }
         
-      
+        
         if let chatMessageAnimatedNode = chatMessageNode as? ChatMessageAnimatedStickerItemNode,
            let animationNode = chatMessageAnimatedNode.animationNode {
             do { // animationNode
@@ -469,10 +476,10 @@ public class ChatControllerAnimationsEmoji {
         do { // chatMessageStatusNode
             let fromFrame = config.chatMessageStatusNode.convertedFrame
             let toFrame = config.chatMessageStatusNode.originalFrame
-
+            
             let fromOpacity: CGFloat = 0.0
             let toOpacity = config.chatMessageStatusNode.originalAlpha
-
+            
             let animations = [
                 ChatControllerAnimations.setupRepositionXAnimation(layer: chatMessageStatusNode.layer,
                                                                    fromPosition: fromFrame.position.x,
@@ -496,7 +503,7 @@ public class ChatControllerAnimationsEmoji {
         do { // inputPlaceholderTransitionNode
             let fromOpacity: CGFloat = 1.0
             let toOpacity = 0.0
-
+            
             let animations = [
                 ChatControllerAnimations.setupAnimation(keyPath: "opacity",
                                                         fromValue: fromOpacity,
@@ -510,7 +517,7 @@ public class ChatControllerAnimationsEmoji {
         if let replyInfoNode = replyInfoNode {
             let fromFrame = config.replyInfoNode.convertedFrameStart
             let toFrame = config.replyInfoNode.convertedFrameEnd
-
+            
             let animations = [
                 ChatControllerAnimations.setupRepositionXAnimation(layer: replyInfoNode.layer,
                                                                    fromPosition: fromFrame.position.x,
@@ -530,7 +537,7 @@ public class ChatControllerAnimationsEmoji {
         if let replyBackgroundNode = replyBackgroundNode {
             let fromFrame = config.replyBackgroundNode.convertedFrameStart
             let toFrame = config.replyBackgroundNode.convertedFrameEnd
-
+            
             let animations = [
                 ChatControllerAnimations.setupRepositionXAnimation(layer: replyBackgroundNode.layer,
                                                                    fromPosition: fromFrame.position.x,
@@ -550,7 +557,7 @@ public class ChatControllerAnimationsEmoji {
         if let stickerImageNode = stickerImageNode {
             let fromOpacity: CGFloat = 1.0
             let toOpacity = 0.0
-
+            
             let animations = [
                 ChatControllerAnimations.setupAnimation(keyPath: "opacity",
                                                         fromValue: fromOpacity,
@@ -600,10 +607,10 @@ public class ChatControllerAnimationsEmoji {
                 ChatControllerAnimations.addAnimations(listContainerNode.layer, animations, duration: animationDuration)
             }
         }
-
+        
         ChatControllerAnimations.isAnimating = true
         ChatControllerAnimations.animationsCounter += 1
-
+        
         CATransaction.commit()
     }
 }

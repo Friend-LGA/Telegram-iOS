@@ -99,7 +99,7 @@ class ChatControllerAnimations {
     private init() {}
     
     static func getAnimationCallback(chatControllerNode viewNode: ChatControllerNode,
-                                            shouldAnimateScrollView: Bool) -> ChatHistoryListViewTransition.AnimationCallback {
+                                     shouldAnimateScrollView: Bool) -> ChatHistoryListViewTransition.AnimationCallback {
         return { [weak viewNode = viewNode] (chatMessageNode: ListViewItemNode, completion: (() -> Void)?) in            
             guard let viewNode = viewNode,
                   let inputPanelNode = viewNode.inputPanelNode as? ChatTextInputPanelNode else {

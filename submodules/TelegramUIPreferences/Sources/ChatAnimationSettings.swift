@@ -187,7 +187,8 @@ final public class ChatAnimationSettingsEmoji: ChatAnimationSettings, Codable {
     public var emojiScaleFunc: ChatAnimationTimingFunction
     public var timeAppearsFunc: ChatAnimationTimingFunction
     
-    init(duration: ChatAnimationDuration = ChatAnimationDuration.fast,
+    init(_ type: ChatAnimationType,
+         duration: ChatAnimationDuration = ChatAnimationDuration.fast,
          yPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
                                                                                   endTimeOffset: 0.0,
                                                                                   controlPoint1: CGPoint(x: 0.33, y: 0.0),
@@ -204,7 +205,7 @@ final public class ChatAnimationSettingsEmoji: ChatAnimationSettings, Codable {
                                                                                     endTimeOffset: 0.5,
                                                                                     controlPoint1: CGPoint(x: 0.33, y: 0.0),
                                                                                     controlPoint2: CGPoint(x: 0.67, y: 1.0))) {
-        self.type = ChatAnimationType.emoji
+        self.type = type
         self.duration = duration
         self.yPositionFunc = yPositionFunc
         self.xPositionFunc = xPositionFunc
@@ -213,7 +214,7 @@ final public class ChatAnimationSettingsEmoji: ChatAnimationSettings, Codable {
     }
     
     public func restoreDefaults() {
-        self.update(from: ChatAnimationSettingsEmoji())
+        self.update(from: ChatAnimationSettingsEmoji(self.type))
     }
     
     public func update(from other: ChatAnimationSettingsEmoji) {
@@ -282,20 +283,20 @@ final public class ChatAnimationSettingsManager: Codable {
         return ChatAnimationSettingsCommon(type)
     }
     
-    static private func getEmojiSettings() -> ChatAnimationSettingsEmoji {
-        if let settingsData = UserDefaults.standard.object(forKey: self.keyForType(.emoji)) as? Data,
+    static private func getEmojiSettings(for type: ChatAnimationType) -> ChatAnimationSettingsEmoji {
+        if let settingsData = UserDefaults.standard.object(forKey: self.keyForType(type)) as? Data,
            let settings = ChatAnimationSettingsEmoji.decodeJSON(settingsData).result {
             return settings
         }
         
-        return ChatAnimationSettingsEmoji()
+        return ChatAnimationSettingsEmoji(type)
     }
     
     public var smallSettings = ChatAnimationSettingsManager.getCommonSettings(for: .small)
     public var bigSettings = ChatAnimationSettingsManager.getCommonSettings(for: .big)
     public var linkSettings = ChatAnimationSettingsManager.getCommonSettings(for: .link)
-    public var emojiSettings = ChatAnimationSettingsManager.getEmojiSettings()
-    public var stickerSettings = ChatAnimationSettingsManager.getCommonSettings(for: .sticker)
+    public var emojiSettings = ChatAnimationSettingsManager.getEmojiSettings(for: .sticker)
+    public var stickerSettings = ChatAnimationSettingsManager.getEmojiSettings(for: .sticker)
     public var voiceSettings = ChatAnimationSettingsManager.getCommonSettings(for: .voice)
     public var videoSettings = ChatAnimationSettingsManager.getCommonSettings(for: .video)
     
