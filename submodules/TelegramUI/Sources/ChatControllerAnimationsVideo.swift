@@ -89,7 +89,7 @@ public class ChatControllerAnimationsVideo {
                             videoView: videoView)
         
         let settingsManager = ChatAnimationSettingsManager()
-        let settings = settingsManager.getSettings(for: ChatAnimationType.video) as! ChatAnimationSettingsCommon
+        let settings = settingsManager.getSettings(for: ChatAnimationType.video) as! ChatAnimationSettingsVideo
         
         viewNode.view.addSubview(videoView)
         
@@ -176,7 +176,7 @@ public class ChatControllerAnimationsVideo {
                 ChatControllerAnimations.setupResizeAnimation(fromSize: fromFrame.size,
                                                               toSize: toFrame.size,
                                                               duration: animationDuration,
-                                                              timingFunction: settings.bubbleShapeFunc),
+                                                              timingFunction: settings.scaleFunc),
                 ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x,
                                                                    duration: animationDuration,
@@ -221,7 +221,7 @@ public class ChatControllerAnimationsVideo {
                                                             fromValue: fromTranslateY,
                                                             toValue: toTranslateY,
                                                             duration: animationDuration,
-                                                            timingFunction: settings.bubbleShapeFunc),
+                                                            timingFunction: settings.scaleFunc),
                 ]
                 listNode.layer.removeAllAnimations()
                 listContainerNode.layer.removeAllAnimations()

@@ -194,7 +194,106 @@ private enum ChatAnimationSettingsControllerEntry: ItemListNodeEntry {
     }
     
     static func == (lhs: ChatAnimationSettingsControllerEntry, rhs: ChatAnimationSettingsControllerEntry) -> Bool {
-        return lhs.dirtyCounter == rhs.dirtyCounter
+        switch lhs {
+        case let .type(lhsType, lhsDirtyCounter):
+            if case let .type(rhsType, rhsDirtyCounter) = rhs, lhsType == rhsType, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .duration(lhsDuration, lhsDirtyCounter):
+            if case let .duration(rhsDuration, rhsDirtyCounter) = rhs, lhsDuration == rhsDuration, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .curve1(lhsDuration, lhsFunction, lhsDirtyCounter):
+            if case let .curve1(rhsDuration, rhsFunction, rhsDirtyCounter) = rhs, lhsDuration == rhsDuration, lhsFunction == rhsFunction, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .curve2(lhsDuration, lhsFunction, lhsDirtyCounter):
+            if case let .curve2(rhsDuration, rhsFunction, rhsDirtyCounter) = rhs, lhsDuration == rhsDuration, lhsFunction == rhsFunction, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .curve3(lhsDuration, lhsFunction, lhsDirtyCounter):
+            if case let .curve3(rhsDuration, rhsFunction, rhsDirtyCounter) = rhs, lhsDuration == rhsDuration, lhsFunction == rhsFunction, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .curve4(lhsDuration, lhsFunction, lhsDirtyCounter):
+            if case let .curve4(rhsDuration, rhsFunction, rhsDirtyCounter) = rhs, lhsDuration == rhsDuration, lhsFunction == rhsFunction, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .curve5(lhsDuration, lhsFunction, lhsDirtyCounter):
+            if case let .curve5(rhsDuration, rhsFunction, rhsDirtyCounter) = rhs, lhsDuration == rhsDuration, lhsFunction == rhsFunction, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .curve6(lhsDuration, lhsFunction, lhsDirtyCounter):
+            if case let .curve6(rhsDuration, rhsFunction, rhsDirtyCounter) = rhs, lhsDuration == rhsDuration, lhsFunction == rhsFunction, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .curve7(lhsDuration, lhsFunction, lhsDirtyCounter):
+            if case let .curve7(rhsDuration, rhsFunction, rhsDirtyCounter) = rhs, lhsDuration == rhsDuration, lhsFunction == rhsFunction, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .header1(lhsTitle, lhsDirtyCounter):
+            if case let .header1(rhsTitle, rhsDirtyCounter) = rhs, lhsTitle == rhsTitle, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .header2(lhsTitle, lhsDirtyCounter):
+            if case let .header2(rhsTitle, rhsDirtyCounter) = rhs, lhsTitle == rhsTitle, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .header3(lhsTitle, lhsDirtyCounter):
+            if case let .header3(rhsTitle, rhsDirtyCounter) = rhs, lhsTitle == rhsTitle, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .header4(lhsTitle, lhsDirtyCounter):
+            if case let .header4(rhsTitle, rhsDirtyCounter) = rhs, lhsTitle == rhsTitle, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .header5(lhsTitle, lhsDirtyCounter):
+            if case let .header5(rhsTitle, rhsDirtyCounter) = rhs, lhsTitle == rhsTitle, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .header6(lhsTitle, lhsDirtyCounter):
+            if case let .header6(rhsTitle, rhsDirtyCounter) = rhs, lhsTitle == rhsTitle, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        case let .header7(lhsTitle, lhsDirtyCounter):
+            if case let .header7(rhsTitle, rhsDirtyCounter) = rhs, lhsTitle == rhsTitle, lhsDirtyCounter == rhsDirtyCounter {
+                return true
+            } else {
+                return false
+            }
+        default:
+            return lhs.dirtyCounter == rhs.dirtyCounter
+        }
     }
     
     static func < (lhs: ChatAnimationSettingsControllerEntry, rhs: ChatAnimationSettingsControllerEntry) -> Bool {
@@ -285,6 +384,28 @@ private func createChatAnimationSettingsControllerEntries(_ state: ChatAnimation
             .curve3(settings.duration, settings.emojiScaleFunc, state.dirtyCounter),
             .header4("TIME APPEARS", state.dirtyCounter),
             .curve4(settings.duration, settings.timeAppearsFunc, state.dirtyCounter)
+        ]
+    }
+    else if let settings = settings as? ChatAnimationSettingsVoice {
+        entries += [
+            .header1("Y POSITION", state.dirtyCounter),
+            .curve1(settings.duration, settings.yPositionFunc, state.dirtyCounter),
+            .header2("X POSITION", state.dirtyCounter),
+            .curve2(settings.duration, settings.xPositionFunc, state.dirtyCounter),
+            .header3("SCALE", state.dirtyCounter),
+            .curve3(settings.duration, settings.scaleFunc, state.dirtyCounter),
+            .header4("FADE", state.dirtyCounter),
+            .curve4(settings.duration, settings.fadeFunc, state.dirtyCounter)
+        ]
+    }
+    else if let settings = settings as? ChatAnimationSettingsVideo {
+        entries += [
+            .header1("Y POSITION", state.dirtyCounter),
+            .curve1(settings.duration, settings.yPositionFunc, state.dirtyCounter),
+            .header2("X POSITION", state.dirtyCounter),
+            .curve2(settings.duration, settings.xPositionFunc, state.dirtyCounter),
+            .header3("SCALE", state.dirtyCounter),
+            .curve3(settings.duration, settings.scaleFunc, state.dirtyCounter),
         ]
     }
     return entries

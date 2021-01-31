@@ -66,8 +66,29 @@ private enum ChatAnimationSettingsTypeControllerEntry: ItemListNodeEntry {
         }
     }
     
+    var type: ChatAnimationType {
+        switch self {
+        case .messagesHeader:
+            return .small
+        case .small:
+            return .small
+        case .big:
+            return .big
+        case .link:
+            return .link
+        case .emoji:
+            return .emoji
+        case .sticker:
+            return .sticker
+        case .voice:
+            return .voice
+        case .video:
+            return .video
+        }
+    }
+    
     static func == (lhs: ChatAnimationSettingsTypeControllerEntry, rhs: ChatAnimationSettingsTypeControllerEntry) -> Bool {
-        return lhs.stableId.rawValue == rhs.stableId.rawValue
+        return lhs.type == rhs.type
     }
     
     static func <(lhs: ChatAnimationSettingsTypeControllerEntry, rhs: ChatAnimationSettingsTypeControllerEntry) -> Bool {

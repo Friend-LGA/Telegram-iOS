@@ -87,7 +87,7 @@ public class ChatControllerAnimationsVoice {
                             audioBlob: audioBlob)
         
         let settingsManager = ChatAnimationSettingsManager()
-        let settings = settingsManager.getSettings(for: ChatAnimationType.voice) as! ChatAnimationSettingsCommon
+        let settings = settingsManager.getSettings(for: ChatAnimationType.voice) as! ChatAnimationSettingsVoice
         
         chatMessageNode.isUserInteractionEnabled = false
         listContainerNode.isUserInteractionEnabled = false
@@ -181,7 +181,7 @@ public class ChatControllerAnimationsVoice {
                 ChatControllerAnimations.setupResizeAnimation(fromSize: fromFrame.size,
                                                               toSize: toFrame.size,
                                                               duration: animationDuration,
-                                                              timingFunction: settings.bubbleShapeFunc),
+                                                              timingFunction: settings.scaleFunc),
                 ChatControllerAnimations.setupRepositionXAnimation(fromPosition: fromFrame.position.x,
                                                                    toPosition: toFrame.position.x,
                                                                    duration: animationDuration,
@@ -194,7 +194,7 @@ public class ChatControllerAnimationsVoice {
                                                         fromValue: fromOpacity,
                                                         toValue: toOpacity,
                                                         duration: animationDuration,
-                                                        timingFunction: settings.timeAppearsFunc)
+                                                        timingFunction: settings.fadeFunc)
             ]
             ChatControllerAnimations.addAnimations(audioBlob.layer, animations, duration: animationDuration)
         }
@@ -208,7 +208,7 @@ public class ChatControllerAnimationsVoice {
                                                         fromValue: fromOpacity,
                                                         toValue: toOpacity,
                                                         duration: animationDuration,
-                                                        timingFunction: settings.timeAppearsFunc)
+                                                        timingFunction: settings.fadeFunc)
             ]
             ChatControllerAnimations.addAnimations(coverNode.layer, animations, duration: animationDuration)
         }
@@ -245,7 +245,7 @@ public class ChatControllerAnimationsVoice {
                                                             fromValue: fromTranslateY,
                                                             toValue: toTranslateY,
                                                             duration: animationDuration,
-                                                            timingFunction: settings.bubbleShapeFunc),
+                                                            timingFunction: settings.scaleFunc),
                 ]
                 listNode.layer.removeAllAnimations()
                 listContainerNode.layer.removeAllAnimations()

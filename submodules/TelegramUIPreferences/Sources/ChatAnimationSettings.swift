@@ -50,7 +50,7 @@ public enum ChatAnimationDuration: Double, Codable {
     }
 }
 
-final public class ChatAnimationTimingFunction: Codable {
+final public class ChatAnimationTimingFunction: Codable, Equatable {
     public var startTimeOffset: CGFloat
     public var endTimeOffset: CGFloat
     public var controlPoint1: CGPoint
@@ -64,6 +64,10 @@ final public class ChatAnimationTimingFunction: Codable {
         self.endTimeOffset = endTimeOffset
         self.controlPoint1 = controlPoint1
         self.controlPoint2 = controlPoint2
+    }
+    
+    public static func == (lhs: ChatAnimationTimingFunction, rhs: ChatAnimationTimingFunction) -> Bool {
+        lhs.startTimeOffset == rhs.startTimeOffset && lhs.endTimeOffset == rhs.endTimeOffset && lhs.controlPoint1 == rhs.controlPoint1 && lhs.controlPoint2 == rhs.controlPoint2
     }
     
     public var startPoint: CGPoint {
@@ -93,9 +97,6 @@ final public class ChatAnimationTimingFunction: Codable {
 public protocol ChatAnimationSettings: class {
     var type: ChatAnimationType { get }
     var duration: ChatAnimationDuration { get set }
-    var yPositionFunc: ChatAnimationTimingFunction { get set }
-    var xPositionFunc: ChatAnimationTimingFunction { get set }
-    var timeAppearsFunc: ChatAnimationTimingFunction { get set }
 }
 
 final public class ChatAnimationSettingsCommon: ChatAnimationSettings, Codable {
@@ -109,7 +110,7 @@ final public class ChatAnimationSettingsCommon: ChatAnimationSettings, Codable {
     public var timeAppearsFunc: ChatAnimationTimingFunction
     
     init(_ type: ChatAnimationType,
-         duration: ChatAnimationDuration = ChatAnimationDuration.fast,
+         duration: ChatAnimationDuration = ChatAnimationDuration.medium,
          yPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
                                                                                   endTimeOffset: 0.0,
                                                                                   controlPoint1: CGPoint(x: 0.33, y: 0.0),
@@ -188,7 +189,7 @@ final public class ChatAnimationSettingsEmoji: ChatAnimationSettings, Codable {
     public var timeAppearsFunc: ChatAnimationTimingFunction
     
     init(_ type: ChatAnimationType,
-         duration: ChatAnimationDuration = ChatAnimationDuration.fast,
+         duration: ChatAnimationDuration = ChatAnimationDuration.medium,
          yPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
                                                                                   endTimeOffset: 0.0,
                                                                                   controlPoint1: CGPoint(x: 0.33, y: 0.0),
@@ -246,6 +247,131 @@ final public class ChatAnimationSettingsEmoji: ChatAnimationSettings, Codable {
     }
 }
 
+final public class ChatAnimationSettingsVoice: ChatAnimationSettings, Codable {
+    public let type: ChatAnimationType
+    public var duration: ChatAnimationDuration
+    public var yPositionFunc: ChatAnimationTimingFunction
+    public var xPositionFunc: ChatAnimationTimingFunction
+    public var scaleFunc: ChatAnimationTimingFunction
+    public var fadeFunc: ChatAnimationTimingFunction
+    
+    init(duration: ChatAnimationDuration = ChatAnimationDuration.medium,
+         yPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                  endTimeOffset: 0.0,
+                                                                                  controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                  controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         xPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                  endTimeOffset: 0.5,
+                                                                                  controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                  controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         scaleFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.17,
+                                                                                   endTimeOffset: 0.5,
+                                                                                   controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                   controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         fadeFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.17,
+                                                                                    endTimeOffset: 0.5,
+                                                                                    controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                    controlPoint2: CGPoint(x: 0.67, y: 1.0))) {
+        self.type = ChatAnimationType.voice
+        self.duration = duration
+        self.yPositionFunc = yPositionFunc
+        self.xPositionFunc = xPositionFunc
+        self.scaleFunc = scaleFunc
+        self.fadeFunc = fadeFunc
+    }
+    
+    public func restoreDefaults() {
+        self.update(from: ChatAnimationSettingsVoice())
+    }
+    
+    public func update(from other: ChatAnimationSettingsVoice) {
+        self.duration = other.duration
+        self.yPositionFunc.update(from: other.yPositionFunc)
+        self.xPositionFunc.update(from: other.xPositionFunc)
+        self.scaleFunc.update(from: other.scaleFunc)
+        self.fadeFunc.update(from: other.fadeFunc)
+    }
+    
+    public func generateJSONData() -> (data: Data?, error: Error?) {
+        let encoder = JSONEncoder()
+        do {
+            let data = try encoder.encode(self)
+            return (data, nil)
+        } catch let error {
+            return (nil, error)
+        }
+    }
+    
+    static public func decodeJSON(_ data: Data) -> (result: ChatAnimationSettingsVoice?, error: Error?) {
+        do {
+            let decoder = JSONDecoder()
+            let result = try decoder.decode(self, from: data)
+            return (result, nil)
+        } catch let error {
+            return (nil, error)
+        }
+    }
+}
+
+final public class ChatAnimationSettingsVideo: ChatAnimationSettings, Codable {
+    public let type: ChatAnimationType
+    public var duration: ChatAnimationDuration
+    public var yPositionFunc: ChatAnimationTimingFunction
+    public var xPositionFunc: ChatAnimationTimingFunction
+    public var scaleFunc: ChatAnimationTimingFunction
+    
+    init(duration: ChatAnimationDuration = ChatAnimationDuration.medium,
+         yPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                  endTimeOffset: 0.0,
+                                                                                  controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                  controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         xPositionFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.0,
+                                                                                  endTimeOffset: 0.5,
+                                                                                  controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                  controlPoint2: CGPoint(x: 0.0, y: 1.0)),
+         scaleFunc: ChatAnimationTimingFunction = ChatAnimationTimingFunction(startTimeOffset: 0.17,
+                                                                                   endTimeOffset: 0.5,
+                                                                                   controlPoint1: CGPoint(x: 0.33, y: 0.0),
+                                                                                   controlPoint2: CGPoint(x: 0.0, y: 1.0))) {
+        self.type = ChatAnimationType.video
+        self.duration = duration
+        self.yPositionFunc = yPositionFunc
+        self.xPositionFunc = xPositionFunc
+        self.scaleFunc = scaleFunc
+    }
+    
+    public func restoreDefaults() {
+        self.update(from: ChatAnimationSettingsVideo())
+    }
+    
+    public func update(from other: ChatAnimationSettingsVideo) {
+        self.duration = other.duration
+        self.yPositionFunc.update(from: other.yPositionFunc)
+        self.xPositionFunc.update(from: other.xPositionFunc)
+        self.scaleFunc.update(from: other.scaleFunc)
+    }
+    
+    public func generateJSONData() -> (data: Data?, error: Error?) {
+        let encoder = JSONEncoder()
+        do {
+            let data = try encoder.encode(self)
+            return (data, nil)
+        } catch let error {
+            return (nil, error)
+        }
+    }
+    
+    static public func decodeJSON(_ data: Data) -> (result: ChatAnimationSettingsVideo?, error: Error?) {
+        do {
+            let decoder = JSONDecoder()
+            let result = try decoder.decode(self, from: data)
+            return (result, nil)
+        } catch let error {
+            return (nil, error)
+        }
+    }
+}
+
 final public class ChatAnimationSettingsManager: Codable {
     static private let smallSettingsKey = "ChatAnimationSettingsForSmallType"
     static private let bigSettingsKey = "ChatAnimationSettingsForBigType"
@@ -292,13 +418,31 @@ final public class ChatAnimationSettingsManager: Codable {
         return ChatAnimationSettingsEmoji(type)
     }
     
+    static private func getVoiceSettings() -> ChatAnimationSettingsVoice {
+        if let settingsData = UserDefaults.standard.object(forKey: self.keyForType(.voice)) as? Data,
+           let settings = ChatAnimationSettingsVoice.decodeJSON(settingsData).result {
+            return settings
+        }
+        
+        return ChatAnimationSettingsVoice()
+    }
+    
+    static private func getVideoSettings() -> ChatAnimationSettingsVideo {
+        if let settingsData = UserDefaults.standard.object(forKey: self.keyForType(.video)) as? Data,
+           let settings = ChatAnimationSettingsVideo.decodeJSON(settingsData).result {
+            return settings
+        }
+        
+        return ChatAnimationSettingsVideo()
+    }
+    
     public var smallSettings = ChatAnimationSettingsManager.getCommonSettings(for: .small)
     public var bigSettings = ChatAnimationSettingsManager.getCommonSettings(for: .big)
     public var linkSettings = ChatAnimationSettingsManager.getCommonSettings(for: .link)
-    public var emojiSettings = ChatAnimationSettingsManager.getEmojiSettings(for: .sticker)
+    public var emojiSettings = ChatAnimationSettingsManager.getEmojiSettings(for: .emoji)
     public var stickerSettings = ChatAnimationSettingsManager.getEmojiSettings(for: .sticker)
-    public var voiceSettings = ChatAnimationSettingsManager.getCommonSettings(for: .voice)
-    public var videoSettings = ChatAnimationSettingsManager.getCommonSettings(for: .video)
+    public var voiceSettings = ChatAnimationSettingsManager.getVoiceSettings()
+    public var videoSettings = ChatAnimationSettingsManager.getVideoSettings()
     
     public init() {}
     
