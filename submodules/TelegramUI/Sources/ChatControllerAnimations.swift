@@ -11,7 +11,7 @@ class ChatControllerAnimations {
     static public private(set) weak var lastStickerImageNode: TransformImageNode? = nil
     static public var lastReplyLineNodeFrame: CGRect? = nil
     static public var voiceBlobView: UIView? = nil
-    static public var voiceBlobViewFrame: CGRect? = nil
+    static public var videoView: UIView? = nil
     
     static public func setLastStickerImageNode(node: TransformImageNode) {
         lastStickerImageNode = node
@@ -138,6 +138,14 @@ class ChatControllerAnimations {
                                                            inputPanelNode: inputPanelNode,
                                                            chatMessageNode: chatMessageNode,
                                                            shouldAnimateScrollView: shouldAnimateScrollView,
+                                                           completion: completion)
+            }
+            else if let chatMessageNode = chatMessageNode as? ChatMessageInstantVideoItemNode {
+                ChatControllerAnimationsVideo.animateVideo(chatControllerNode: viewNode,
+                                                           inputPanelNode: inputPanelNode,
+                                                           chatMessageNode: chatMessageNode,
+                                                           shouldAnimateScrollView: shouldAnimateScrollView,
+                                                           presentationData: presentationData,
                                                            completion: completion)
             }
             else {

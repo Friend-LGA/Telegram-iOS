@@ -22,7 +22,7 @@ private let inlineBotNameFont = nameFont
 class ChatMessageInstantVideoItemNode: ChatMessageItemView {
     private let contextSourceNode: ContextExtractedContentContainingNode
     private let containerNode: ContextControllerSourceNode
-    private let interactiveVideoNode: ChatMessageInteractiveInstantVideoNode
+    public let interactiveVideoNode: ChatMessageInteractiveInstantVideoNode
     
     private var selectionNode: ChatMessageSelectionNode?
     private var deliveryFailedNode: ChatMessageDeliveryFailedNode?

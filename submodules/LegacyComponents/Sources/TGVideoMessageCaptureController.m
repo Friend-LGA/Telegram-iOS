@@ -320,6 +320,7 @@ typedef enum
     _circleView = [[UIView alloc] initWithFrame:CGRectInset(_circleWrapperView.bounds, shadowSize, shadowSize)];
     _circleView.clipsToBounds = true;
     _circleView.layer.cornerRadius = _circleView.frame.size.width / 2.0f;
+    _circleView.tag = 485;
     [_circleWrapperView addSubview:_circleView];
     
     _placeholderView = [[UIImageView alloc] initWithFrame:_circleView.bounds];

@@ -439,13 +439,44 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate {
             if let strongSelf = self, let interfaceState = strongSelf.presentationInterfaceState, let interfaceInteraction = strongSelf.interfaceInteraction {
                 if let _ = interfaceState.inputTextPanelState.mediaRecordingState {
                     if sendMedia {
-                        let micDecoration = strongSelf.actionButtons.micButton.micDecoration
-                        let snapshotView = micDecoration.snapshotView(afterScreenUpdates: false)!
-                        snapshotView.layer.zPosition = CGFloat(MAXFLOAT)
-                        ChatControllerAnimations.voiceBlobView = snapshotView
-                        ChatControllerAnimations.voiceBlobViewFrame = micDecoration.frame
-                        UIApplication.shared.windows.last?.addSubview(snapshotView)
-                        snapshotView.frame = micDecoration.frame
+                        do { // render mic bubble for audio messages
+                            let micDecoration = strongSelf.actionButtons.micButton.micDecoration
+                            let snapshotView = micDecoration.snapshotView(afterScreenUpdates: false)!
+                            snapshotView.layer.zPosition = CGFloat(MAXFLOAT)
+                            ChatControllerAnimations.voiceBlobView = snapshotView
+                            UIApplication.shared.windows.last?.addSubview(snapshotView)
+                            snapshotView.frame = micDecoration.frame
+                        }
+                        
+                        do { // render video view for video messages
+                            func findSubviewWithTag(_ view: UIView, _ tag: Int) -> UIView? {
+                                if view.tag == tag { return view }
+                                if view.subviews.isEmpty { return nil }
+                                
+                                var result: UIView?
+                                for subview in view.subviews {
+                                    result = findSubviewWithTag(subview, tag)
+                                    if result != nil { break }
+                                }
+                                
+                                return result
+                            }
+                            
+                            var cameraView: UIView? = nil
+                            for window in UIApplication.shared.windows {
+                                for subview in window.subviews {
+                                    if let view = findSubviewWithTag(subview, 485) {
+                                        cameraView = view
+                                        break
+                                    }
+                                }
+                            }
+                            if let cameraView = cameraView {
+                                let snapshotView = cameraView.snapshotView(afterScreenUpdates: false)!
+                                ChatControllerAnimations.videoView = snapshotView
+                                snapshotView.frame = cameraView.convert(cameraView.bounds, to: UIApplication.shared.keyWindow)
+                            }
+                        }
                         
                         interfaceInteraction.finishMediaRecording(.send)
                     } else {

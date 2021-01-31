@@ -27,7 +27,7 @@ private struct Config {
     let animatingNode: (startFrame: CGRect,
                         endFrame: CGRect)
     
-    let audioBlob: (originalFrame: CGRect,
+    let videoView: (originalFrame: CGRect,
                     convertedStartFrame: CGRect,
                     convertedEndFrame: CGRect)
     
@@ -35,8 +35,8 @@ private struct Config {
          inputPanelNode: ChatTextInputPanelNode,
          inputTextContainerNode: ASDisplayNode,
          chatMessageNode: ASDisplayNode,
-         backgroundNode: ASDisplayNode,
-         audioBlob: UIView) {
+         interactiveVideoNode: ASDisplayNode,
+         videoView: UIView) {
         self.inputTextContainerNode = (convertedFrame: viewNode.textInputLastFrame ?? inputTextContainerNode.view.convert(inputTextContainerNode.view.bounds, to: viewNode.view),
                                        contentOffset: viewNode.textInputLastContentOffset ?? inputPanelNode.textInputNode?.textView.contentOffset ?? CGPoint.zero,
                                        contentSize: viewNode.textInputLastContentSize ?? inputPanelNode.textInputNode?.textView.contentSize ?? CGSize.zero,
@@ -49,22 +49,24 @@ private struct Config {
         self.animatingNode = (startFrame: convertedFrame.offsetBy(dx: CGFloat.zero, dy: chatMessageNode.bounds.height),
                               endFrame: convertedFrame)
         
-        let endFrame = backgroundNode.view.convert(backgroundNode.view.bounds, to: audioBlob.superview!)
-        let inset: CGFloat = 20.0
-        self.audioBlob = (originalFrame: audioBlob.frame,
-                          convertedStartFrame: audioBlob.frame,
-                          convertedEndFrame: CGRect(origin: CGPoint(x: endFrame.origin.x - inset, y: endFrame.origin.y - inset),
-                                                    size: CGSize(width: endFrame.height + inset * 2.0, height: endFrame.height + inset * 2.0)))
+        let endFrame = interactiveVideoNode.view.convert(interactiveVideoNode.view.bounds, to: viewNode.view)
+        let keyWindow = UIApplication.shared.keyWindow!
+        let insets: CGFloat = 0.0 // endFrame.width * 0.05
+        self.videoView = (originalFrame: videoView.frame,
+                          convertedStartFrame: keyWindow.convert(videoView.frame, to: viewNode.view),
+                          convertedEndFrame: CGRect(x: endFrame.origin.x - insets,
+                                                    y: endFrame.origin.y - insets,
+                                                    width: endFrame.width + insets * 2.0,
+                                                    height: endFrame.height + insets * 2.0))
     }
 }
 
-public class ChatControllerAnimationsVoice {
+public class ChatControllerAnimationsVideo {
     private init() {}
     
-    static func animateVoice(chatControllerNode viewNode: ChatControllerNode,
+    static func animateVideo(chatControllerNode viewNode: ChatControllerNode,
                              inputPanelNode: ChatTextInputPanelNode,
-                             chatMessageNode: ChatMessageBubbleItemNode,
-                             chatMessageFileContentNode: ChatMessageFileBubbleContentNode,
+                             chatMessageNode: ChatMessageInstantVideoItemNode,
                              shouldAnimateScrollView: Bool,
                              presentationData: PresentationData,
                              completion: (() -> Void)?) {
@@ -72,22 +74,26 @@ public class ChatControllerAnimationsVoice {
         let listContainerNode = viewNode.historyNodeContainer
         let inputTextContainerNode = inputPanelNode.textInputContainer
         
-        guard let audioBlob = ChatControllerAnimations.voiceBlobView else {
+        guard let videoView = ChatControllerAnimations.videoView else {
             completion?()
             return
         }
         
-        let backgroundNode = chatMessageNode.backgroundNode
+        let interactiveVideoNode = chatMessageNode.interactiveVideoNode
         
         let config = Config(viewNode: viewNode,
                             inputPanelNode: inputPanelNode,
                             inputTextContainerNode: inputTextContainerNode,
                             chatMessageNode: chatMessageNode,
-                            backgroundNode: backgroundNode,
-                            audioBlob: audioBlob)
+                            interactiveVideoNode: interactiveVideoNode,
+                            videoView: videoView)
         
         let settingsManager = ChatAnimationSettingsManager()
-        let settings = settingsManager.getSettings(for: ChatAnimationType.voice) as! ChatAnimationSettingsCommon
+        let settings = settingsManager.getSettings(for: ChatAnimationType.video) as! ChatAnimationSettingsCommon
+        
+        viewNode.view.addSubview(videoView)
+        
+        interactiveVideoNode.alpha = 0.0
         
         chatMessageNode.isUserInteractionEnabled = false
         listContainerNode.isUserInteractionEnabled = false
@@ -102,17 +108,6 @@ public class ChatControllerAnimationsVoice {
         chatMessageNode.displaysAsynchronously = false
         chatMessageNode.shouldAnimateSizeChanges = false
         
-        let coverNode = ASDisplayNode()
-        chatMessageNode.addSubnode(coverNode)
-        let convertedBackgroundFrame = backgroundNode.view.convert(backgroundNode.view.bounds, to: chatMessageNode.view)
-        let inset: CGFloat = 8.0
-        coverNode.frame = CGRect(x: convertedBackgroundFrame.origin.x + inset,
-                                 y: convertedBackgroundFrame.origin.y + inset,
-                                 width: convertedBackgroundFrame.height - inset * 2.0,
-                                 height: convertedBackgroundFrame.height - inset * 2.0)
-        
-        coverNode.backgroundColor = viewNode.chatPresentationInterfaceState.chatWallpaper.hasWallpaper ? presentationData.theme.chat.message.outgoing.bubble.withWallpaper.fill : presentationData.theme.chat.message.outgoing.bubble.withoutWallpaper.fill
-        
         // Preparation is done, it's time to go bananaz!!! (... and draw some animations)
         let animationDuration = settings.duration.rawValue
         
@@ -124,19 +119,22 @@ public class ChatControllerAnimationsVoice {
                                             weak inputPanelNode,
                                             weak listNode,
                                             weak chatMessageNode,
-                                            weak audioBlob,
-                                            weak coverNode] in
+                                            weak videoView,
+                                            weak interactiveVideoNode] in
             listNode?.layer.removeAllAnimations()
             listContainerNode?.layer.removeAllAnimations()
             
-            if let audioBlob = audioBlob {
-                audioBlob.removeFromSuperview()
-                ChatControllerAnimations.voiceBlobView = nil
+            if let interactiveVideoNode = interactiveVideoNode {
+                interactiveVideoNode.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.3, removeOnCompletion: false, completion: { [weak videoView] _ in
+                    if let videoView = videoView {
+                        videoView.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, removeOnCompletion: false, completion: { [weak videoView] _ in
+                            videoView?.removeFromSuperview()
+                        })
+                    }
+                })
             }
             
-            if let coverNode = coverNode {
-                coverNode.removeFromSupernode()
-            }
+            ChatControllerAnimations.videoView = nil
             
             if shouldAnimateScrollView, let listContainerNode = listContainerNode, let listNode = listNode {
                 listContainerNode.frame = listContainerNodeOriginalFrame
@@ -170,13 +168,10 @@ public class ChatControllerAnimationsVoice {
             completion?()
         }
         
-        do { // audioBlob
-            let fromFrame = config.audioBlob.convertedStartFrame
-            let toFrame = config.audioBlob.convertedEndFrame
-            
-            let fromOpacity: CGFloat = 1.0
-            let toOpacity: CGFloat = 0.0
-            
+        do { // videoView
+            let fromFrame = config.videoView.convertedStartFrame
+            let toFrame = config.videoView.convertedEndFrame
+
             let animations: [CAAnimation] = [
                 ChatControllerAnimations.setupResizeAnimation(fromSize: fromFrame.size,
                                                               toSize: toFrame.size,
@@ -190,27 +185,8 @@ public class ChatControllerAnimationsVoice {
                                                                    toPosition: toFrame.position.y,
                                                                    duration: animationDuration,
                                                                    timingFunction: settings.yPositionFunc),
-                ChatControllerAnimations.setupAnimation(keyPath: "opacity",
-                                                        fromValue: fromOpacity,
-                                                        toValue: toOpacity,
-                                                        duration: animationDuration,
-                                                        timingFunction: settings.timeAppearsFunc)
             ]
-            ChatControllerAnimations.addAnimations(audioBlob.layer, animations, duration: animationDuration)
-        }
-        
-        do { // coverNode
-            let fromOpacity: CGFloat = 1.0
-            let toOpacity: CGFloat = 0.0
-            
-            let animations: [CAAnimation] = [
-                ChatControllerAnimations.setupAnimation(keyPath: "opacity",
-                                                        fromValue: fromOpacity,
-                                                        toValue: toOpacity,
-                                                        duration: animationDuration,
-                                                        timingFunction: settings.timeAppearsFunc)
-            ]
-            ChatControllerAnimations.addAnimations(coverNode.layer, animations, duration: animationDuration)
+            ChatControllerAnimations.addAnimations(videoView.layer, animations, duration: animationDuration)
         }
         
         // And finally, scroll view!

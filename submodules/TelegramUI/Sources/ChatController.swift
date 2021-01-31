@@ -9004,6 +9004,11 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         if let audioRecorderValue = self.audioRecorderValue {
             audioRecorderValue.stop()
             
+            if let videoView = ChatControllerAnimations.videoView {
+                videoView.removeFromSuperview()
+                ChatControllerAnimations.videoView = nil
+            }
+            
             switch updatedAction {
                 case .dismiss:
                     self.chatDisplayNode.updateRecordedMediaDeleted(true)
@@ -9075,6 +9080,11 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             }
             self.audioRecorder.set(.single(nil))
         } else if let videoRecorderValue = self.videoRecorderValue {
+            if let voiceBlobView = ChatControllerAnimations.voiceBlobView {
+                voiceBlobView.removeFromSuperview()
+                ChatControllerAnimations.voiceBlobView = nil
+            }
+            
             if case .send = updatedAction {
                 self.chatDisplayNode.updateRecordedMediaDeleted(false)
                 videoRecorderValue.completeVideo()
