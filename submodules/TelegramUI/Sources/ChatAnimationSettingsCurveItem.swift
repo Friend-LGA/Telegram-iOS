@@ -317,6 +317,7 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
         }
         if let timingFunction = self.timingFunction {
             timingFunction.startTimeOffset = CGFloat(self.leftSlider.value)
+            timingFunction.endTimeOffset = CGFloat(1.0 - self.rightSlider.value)
         }
         self.setNeedsDisplay()
     }
@@ -334,6 +335,7 @@ class ChatAnimationSettingsCurveNode: ASDisplayNode {
             }
         }
         if let timingFunction = self.timingFunction {
+            timingFunction.startTimeOffset = CGFloat(self.leftSlider.value)
             timingFunction.endTimeOffset = CGFloat(1.0 - self.rightSlider.value)
         }
         self.setNeedsDisplay()
