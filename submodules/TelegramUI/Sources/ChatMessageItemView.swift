@@ -10,6 +10,7 @@ import LocalizedPeerData
 import ContextUI
 import ChatListUI
 import TelegramPresentationData
+import ShimmerEffect
 
 struct ChatMessageItemWidthFill {
     var compactInset: CGFloat
@@ -640,6 +641,16 @@ final class ChatMessageAccessibilityData {
     
     @objc private func noop() {
     }
+}
+
+protocol ChatMessageSticker: ListViewItemNode {
+    var contextSourceNode: ContextExtractedContentContainingNode { get }
+    var containerNode: ContextControllerSourceNode { get }
+    var imageNode: TransformImageNode { get }
+    var placeholderNode: StickerShimmerEffectNode? { get }
+    var dateAndStatusNode: ChatMessageDateAndStatusNode { get }
+    var replyInfoNode: ChatMessageReplyInfoNode? { get }
+    var replyBackgroundNode: ASImageNode? { get }
 }
 
 public class ChatMessageItemView: ListViewItemNode {

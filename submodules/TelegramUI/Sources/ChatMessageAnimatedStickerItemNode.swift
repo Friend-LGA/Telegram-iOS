@@ -140,12 +140,12 @@ class ChatMessageShareButton: HighlightableButtonNode {
     }
 }
 
-class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
-    private let contextSourceNode: ContextExtractedContentContainingNode
-    private let containerNode: ContextControllerSourceNode
-    let imageNode: TransformImageNode
-    private var placeholderNode: StickerShimmerEffectNode?
-    private var animationNode: GenericAnimatedStickerNode?
+class ChatMessageAnimatedStickerItemNode: ChatMessageItemView, ChatMessageSticker {
+    public let contextSourceNode: ContextExtractedContentContainingNode
+    public let containerNode: ContextControllerSourceNode
+    public let imageNode: TransformImageNode
+    public private(set) var placeholderNode: StickerShimmerEffectNode?
+    public private(set) var animationNode: GenericAnimatedStickerNode?
     private var didSetUpAnimationNode = false
     private var isPlaying = false
     private var animateGreeting = false
@@ -169,9 +169,9 @@ class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
     private var forwardBackgroundNode: ASImageNode?
     
     private var viaBotNode: TextNode?
-    private let dateAndStatusNode: ChatMessageDateAndStatusNode
-    private var replyInfoNode: ChatMessageReplyInfoNode?
-    private var replyBackgroundNode: ASImageNode?
+    public let dateAndStatusNode: ChatMessageDateAndStatusNode
+    public private(set) var replyInfoNode: ChatMessageReplyInfoNode?
+    public private(set) var replyBackgroundNode: ASImageNode?
     
     private var actionButtonsNode: ChatMessageActionButtonsNode?
     
@@ -186,6 +186,20 @@ class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
     private var appliedForwardInfo: (Peer?, String?)?
     
     private var currentSwipeAction: ChatControllerInteractionSwipeAction?
+    
+    public func imitateTap() {
+        let recognizer = TapLongTapOrDoubleTapGestureRecognizer(target: self, action: #selector(self.tapLongTapOrDoubleTapGesture(_:)))
+        if let action = self.gestureRecognized(gesture: .tap, location: self.imageNode.frame.center, recognizer: recognizer, withHaptic: false) {
+            switch action {
+            case let .action(f):
+                f()
+            case let .optionalAction(f):
+                f()
+            case .openContextMenu:
+                break
+            }
+        }
+    }
     
     required init() {
         self.contextSourceNode = ContextExtractedContentContainingNode()
@@ -244,7 +258,12 @@ class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
             if image != nil {
                 strongSelf.removePlaceholder(animated: !firstTime)
                 if firstTime {
-                    strongSelf.animationNode?.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2)
+                    if ChatControllerAnimations.isAnimating {
+                        strongSelf.animationNode?.alpha = 0.0
+                        strongSelf.imageNode.alpha = 1.0
+                    } else {
+                        strongSelf.animationNode?.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2)
+                    }
                 }
             }
             firstTime = false
@@ -491,7 +510,7 @@ class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
         }
     }
     
-    private func updateVisibility() {
+    public func updateVisibility() {
         guard let item = self.item else {
             return
         }
@@ -1208,7 +1227,7 @@ class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
         }
     }
     
-    private func gestureRecognized(gesture: TapLongTapOrDoubleTapGesture, location: CGPoint, recognizer: TapLongTapOrDoubleTapGestureRecognizer?) -> InternalBubbleTapAction? {
+    private func gestureRecognized(gesture: TapLongTapOrDoubleTapGesture, location: CGPoint, recognizer: TapLongTapOrDoubleTapGestureRecognizer?, withHaptic: Bool = true) -> InternalBubbleTapAction? {
         switch gesture {
         case .tap:
             if let avatarNode = self.accessoryItemNode as? ChatMessageAvatarAccessoryItemNode, avatarNode.frame.contains(location) {
@@ -1361,7 +1380,7 @@ class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                                                             strongSelf.haptic = haptic
                                                         }
                                                         
-                                                        if let haptic = haptic, !haptic.active {
+                                                        if let haptic = haptic, withHaptic, !haptic.active {
                                                             haptic.start(time: 0.0)
                                                         }
                                                         

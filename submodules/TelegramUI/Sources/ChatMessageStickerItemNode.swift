@@ -18,11 +18,11 @@ private let nameFont = Font.medium(14.0)
 private let inlineBotPrefixFont = Font.regular(14.0)
 private let inlineBotNameFont = nameFont
 
-class ChatMessageStickerItemNode: ChatMessageItemView {
-    private let contextSourceNode: ContextExtractedContentContainingNode
-    private let containerNode: ContextControllerSourceNode
-    let imageNode: TransformImageNode
-    private var placeholderNode: StickerShimmerEffectNode?
+class ChatMessageStickerItemNode: ChatMessageItemView, ChatMessageSticker {
+    public let contextSourceNode: ContextExtractedContentContainingNode
+    public let containerNode: ContextControllerSourceNode
+    public let imageNode: TransformImageNode
+    public private(set) var placeholderNode: StickerShimmerEffectNode?
     var textNode: TextNode?
     
     private var swipeToReplyNode: ChatMessageSwipeToReplyNode?
@@ -36,9 +36,9 @@ class ChatMessageStickerItemNode: ChatMessageItemView {
     private let fetchDisposable = MetaDisposable()
     
     private var viaBotNode: TextNode?
-    private let dateAndStatusNode: ChatMessageDateAndStatusNode
-    private var replyInfoNode: ChatMessageReplyInfoNode?
-    private var replyBackgroundNode: ASImageNode?
+    public let dateAndStatusNode: ChatMessageDateAndStatusNode
+    public private(set) var replyInfoNode: ChatMessageReplyInfoNode?
+    public private(set) var replyBackgroundNode: ASImageNode?
     
     private var actionButtonsNode: ChatMessageActionButtonsNode?
     
@@ -66,7 +66,11 @@ class ChatMessageStickerItemNode: ChatMessageItemView {
             if image != nil {
                 strongSelf.removePlaceholder(animated: !firstTime)
                 if firstTime {
-                    strongSelf.imageNode.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2)
+                    if ChatControllerAnimations.isAnimating {
+                        strongSelf.imageNode.alpha = 1.0
+                    } else {
+                        strongSelf.imageNode.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2)
+                    }
                 }
             }
             firstTime = false
@@ -596,7 +600,7 @@ class ChatMessageStickerItemNode: ChatMessageItemView {
             }
             
             return (ListViewItemNodeLayout(contentSize: layoutSize, insets: layoutInsets), { [weak self] animation, _ in
-                if let strongSelf = self {
+                if let strongSelf = self, !ChatControllerAnimations.isAnimating {
                     var transition: ContainedViewLayoutTransition = .immediate
                     if case let .System(duration) = animation {
                         transition = .animated(duration: duration, curve: .spring)

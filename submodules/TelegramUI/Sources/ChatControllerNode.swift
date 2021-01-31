@@ -338,6 +338,9 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
     public private(set) var textInputLastContentOffset: CGPoint?
     public private(set) var textInputLastContentSize: CGSize?
     public private(set) var accessoryPanelLastFrame: CGRect?
+    public private(set) var emojiLastFrame: CGRect?
+    public private(set) var emojiLastCharacter: Character?
+    public private(set) var lastReplyLineNodeFrame: CGRect?
     
     let navigateButtons: ChatHistoryNavigationButtons
     
@@ -617,16 +620,32 @@ class ChatControllerNode: ASDisplayNode, UIScrollViewDelegate {
                         strongSelf.textInputLastFrame = textInputNode.view.convert(textInputNode.view.bounds, to: strongSelf.view)
                     }
                     strongSelf.textInputLastContentOffset = nil
-                    if let textInputNode = strongSelf.textInputPanelNode?.textInputNode {
-                        strongSelf.textInputLastContentOffset = textInputNode.textView.contentOffset
+                    if let textView = strongSelf.textInputPanelNode?.textInputNode?.textView {
+                        strongSelf.textInputLastContentOffset = textView.contentOffset
                     }
                     strongSelf.textInputLastContentSize = nil
-                    if let textInputNode = strongSelf.textInputPanelNode?.textInputNode {
-                        strongSelf.textInputLastContentSize = textInputNode.textView.contentSize
+                    if let textView = strongSelf.textInputPanelNode?.textInputNode?.textView {
+                        strongSelf.textInputLastContentSize = textView.contentSize
                     }
                     strongSelf.accessoryPanelLastFrame = nil
                     if let accessoryPanelNode = strongSelf.accessoryPanelNode {
                         strongSelf.accessoryPanelLastFrame = accessoryPanelNode.frame
+                    }
+                    strongSelf.lastReplyLineNodeFrame = nil
+                    if let accessoryPanelNode = strongSelf.accessoryPanelNode as? ReplyAccessoryPanelNode {
+                        strongSelf.lastReplyLineNodeFrame = accessoryPanelNode.lineNode.view.convert(accessoryPanelNode.lineNode.view.bounds, to: strongSelf.view)
+                    }
+                    strongSelf.emojiLastFrame = nil
+                    strongSelf.emojiLastCharacter = nil
+                    if let textInputNode = strongSelf.textInputPanelNode?.textInputNode, let text = textInputNode.textView.text, !text.isEmpty {
+                        let trimmedText = text.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: .newlines)
+                        if !trimmedText.isEmpty {
+                            let emoji = trimmedText[trimmedText.startIndex]
+                            strongSelf.emojiLastCharacter = emoji
+                            let string = NSString(string: text)
+                            let range = string.range(of: String(emoji))
+                            strongSelf.emojiLastFrame = textInputNode.frame(forTextRange: range)
+                        }
                     }
                     strongSelf.sendCurrentMessage()
                 }
